@@ -161,9 +161,7 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
             scheduledRequest = new ScheduledRequest(requestId, request, parentFuture, expirationDate);
 
             // in case it times out
-            LOGGER.debug("Before queuedRequests.put");
             queuedRequests.put(requestId, scheduledRequest);
-            LOGGER.debug("After queuedRequests.put");
 
             scheduler.schedule(requestId, expirationDate);
         }
