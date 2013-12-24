@@ -1,211 +1,131 @@
 package com.zipwhip.api.signals;
 
-import com.zipwhip.api.signals.commands.Command;
-import com.zipwhip.api.signals.commands.SignalCommand;
-import com.zipwhip.api.signals.commands.SubscriptionCompleteCommand;
-import com.zipwhip.api.signals.sockets.ConnectionHandle;
-import com.zipwhip.api.signals.sockets.ConnectionState;
+import com.zipwhip.api.signals.dto.BindResult;
+import com.zipwhip.api.signals.dto.DeliveredMessage;
+import com.zipwhip.api.signals.dto.SubscribeResult;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.events.Observable;
 import com.zipwhip.lifecycle.Destroyable;
-import com.zipwhip.signals.presence.Presence;
-
-import java.util.List;
-import java.util.Map;
+import com.zipwhip.signals2.presence.Presence;
+import com.zipwhip.signals2.presence.UserAgent;
 
 /**
- * Created by IntelliJ IDEA. User: Michael Date: 8/1/11 Time: 4:22 PM
+ * Date: 5/7/13
+ * Time: 4:41 PM
+ *
+ * SignalProvider is the only class you need to talk with the signal server. The old design broke up the
+ * /signals/connect and clientId work into 2 classes.
+ *
+ * @author Michael Smyers
+ * @version 2
  */
 public interface SignalProvider extends Destroyable {
 
-    ConnectionState getConnectionState();
-
-    /**
-     * The SignalServer uses a separate id to track you, because it's an Id
-     * given to a TCP/IP connection, not a user.
-     *
-     * @return the id that the SignalServer has for us
-     */
-    String getClientId();
+    boolean isConnected();
 
     /**
      * Tell it to connect. This call is idempotent, so if multiple calls to
-     * a connection provider will have no effect.
+     * a connection provider (if already connected) will have no effect.
      *
+     * If you do not have a presence object set on this, it will fail.
+     *
+     * You must have UserAgent information defined.
+     *
+     * @throws IllegalStateException If you do not have userAgent information defined.
      * @return a ObservableFuture task indicating if the connection was successful.
      * @throws Exception if an error is encountered when connecting
      */
-    ObservableFuture<ConnectionHandle> connect();
+    ObservableFuture<Void> connect(UserAgent userAgent) throws IllegalStateException;
+    ObservableFuture<Void> connect(UserAgent userAgent, String clientId, String token) throws IllegalStateException;
 
     /**
-     * Tell it to connect.
+     * Tell it to disconnect. Will not reconnect.
      *
-     * @param clientId Pass in null if you don't have one.
-     * @return A future that tells you when the connecting is complete. The
-     *         string result is the clientId.
-     * @throws Exception if an I/O happens while connecting
-     */
-    ObservableFuture<ConnectionHandle> connect(String clientId);
-
-    /**
-     * Tell it to connect.
-     *
-     * @param clientId Pass in null if you don't have one.
-     * @param versions a Map of the current signal version per subscription.
-     * @return A future that tells you when the connecting is complete. The
-     *         string result is the clientId.
-     * @throws Exception if an I/O happens while connecting.
-     */
-    ObservableFuture<ConnectionHandle> connect(String clientId, Map<String, Long> versions);
-
-    /**
-     * Tell it to connect. The future will unblock when {action:"CONNECT"} comes back
-     *
-     * @param clientId Pass in null if you don't have one.
-     * @param versions a Map of the current signal version per subscription.
-     * @param presence A Presence object to send on connect.
-     * @return A future that tells you when the connecting is complete. The
-     *         string result is the clientId.
-     * @throws Exception if an I/O happens while connecting.
-     */
-    ObservableFuture<ConnectionHandle> connect(String clientId, Map<String, Long> versions, Presence presence);
-
-    /**
-     * Tell it to disconnect.
-     *
-     * @return an event that tells you its complete
+     * @return A future that can be observed
      * @throws Exception if an I/O happens while disconnecting
      */
-    ObservableFuture<ConnectionHandle> disconnect();
+    ObservableFuture<Void> disconnect();
 
     /**
-     * Tell it to disconnect. Call this with false is equivalent to calling {@code disconnect()}.
-     * Calling it with true will cause the connection to go into reconnect mode once the disconnect happens.
+     * Bind a sessionKey+subscriptionId to a clientId. The server will respond with a SubscriptionCompleteCommand.
      *
-     * @param causedByNetwork If the network state caused the disconnect
-     * @return an event that tells you its complete
-     * @throws Exception if an I/O happens while disconnecting
+     * The server will remember this binding permanently. You only need to do this during the initial login phase
+     * of your app.
+     *
+     * @param sessionKey
+     * @param subscriptionId
+     * @return
      */
-    ObservableFuture<ConnectionHandle> disconnect(boolean causedByNetwork);
+    ObservableFuture<SubscribeResult> subscribe(String sessionKey, String subscriptionId);
+
+    /**
+     *
+     *
+     * @param subscriptionId
+     * @return
+     */
+    ObservableFuture<Void> unsubscribe(String sessionKey, String subscriptionId);
 
     /**
      * Will reset the state, followed by a disconnect, followed by an immediate reconnect.
      *
      * @throws Exception
      */
-    ObservableFuture<ConnectionHandle> resetDisconnectAndConnect();
+    ObservableFuture<Void> resetDisconnectAndConnect();
 
     /**
-     * This little function is a BIG deal when you are running on a platform that freezes your executions
-     * (i.e. Android) when the CPU goes to sleep.
-     * <p/>
-     * Calling {@code ping} will cancel any pending network keepalives and fire one immediately.
-     */
-    ObservableFuture<Boolean> ping();
-
-    /**
-     * You can Observe this event to capture signals that come in.
-     * <p/>
-     * As signals are always wrapped by SignalCommand this event and {@code onSignalCommandReceived} will fire simultaneously.
-     */
-    Observable<List<Signal>> getSignalReceivedEvent();
-
-    /**
-     * You can Observe this event to capture the higher level object containing the command
-     * and the signal object.
-     * <p/>
-     * As signals are always wrapped by SignalCommand this event and {@code onSignalReceived} will fire simultaneously.
-     */
-    Observable<List<SignalCommand>> getSignalCommandReceivedEvent();
-
-    /**
-     * Observe the changes in connection. This is when your clientId is used for
-     * the first time. True is connected and False is disconnected.
-     * <p/>
-     * This is a low level TCP connection observable.
-     */
-    Observable<Boolean> getConnectionChangedEvent();
-
-    /**
-     * Observe when we authenticate with the SignalServer. This means a new
-     * clientId has been given to us for the first time. This should only fire
-     * once.
-     * <p/>
-     * The String param is the clientId.
-     */
-    Observable<String> getNewClientIdReceivedEvent();
-
-    /**
-     * Observe when receive the subscription complete event indicating
-     * that we are subscribed to the SignalServer and will begin to
-     * receive events.
-     */
-    Observable<SubscriptionCompleteCommand> getSubscriptionCompleteReceivedEvent();
-
-    /**
-     * Observe when we receive a presence update and report if the phone is connected.
-     * A True result indicates the phone is connected.
-     */
-    Observable<Boolean> getPhonePresenceReceivedEvent();
-
-    /**
-     * Observe a signal verification sent by another connected client.
-     */
-    Observable<Void> getSignalVerificationReceivedEvent();
-
-    /**
-     * Observe a new signal version for a given subscription and channel.
-     */
-    Observable<VersionMapEntry> getVersionChangedEvent();
-
-    /**
-     * Observe an inactive ping event.
-     */
-    Observable<PingEvent> getPingReceivedEvent();
-
-    /**
-     * Observe any exceptions in the {@code SignalConnection} layer.
-     */
-    Observable<String> getExceptionEvent();
-
-    /**
-     * Observe any commands sent from the Signal Server
-     */
-    Observable<Command> getCommandReceivedEvent();
-
-    /**
-     * Get the current Presence object or null
-     *
-     * @return The current Presence object or null
-     */
-    Presence getPresence();
-
-    /**
-     * Set the Presence to use on the next connection.
-     *
-     * @param presence The Presence to use on the next connection.
-     */
-    void setPresence(Presence presence);
-
-    /**
-     * Get the current versions or null
-     *
-     * @return The current versions or null
-     */
-    Map<String, Long> getVersions();
-
-    /**
-     * Set the signal versions to use on the next connection.
-     *
-     * @param versions The signal versions to use on the next connection.
-     */
-    void setVersions(Map<String, Long> versions);
-
-    /**
-     * Gets the currently connected ConnectionHandle
+     * A "bind" event occurs when the sessionId is bound to the clientId
      *
      * @return
      */
-    ConnectionHandle getConnectionHandle();
+    Observable<BindResult> getBindEvent();
+
+    /**
+     * A "subscribe" event occurs when the sessionKey is bound to a clientId
+     *
+     * @return
+     */
+    Observable<SubscribeResult> getSubscribeEvent();
+
+    Observable<SubscribeResult> getUnsubscribeEvent();
+
+    /**
+     * Fires when ANY presence changes for ANY clientId associated with your channels.
+     *
+     * For example, clientId1 and clientId2 both are associated with user1. Both clients will hear each others presence
+     * change events.
+     *
+     * @return
+     */
+    Observable<Event<Presence>> getPresenceChangedEvent();
+
+    Observable<DeliveredMessage> getSignalReceivedEvent();
+
+    /**
+     * If any parsing exception occurs, or connection exception. Should generally test for the exception type
+     *
+     * JsonParseException - json exception
+     * SocketIOException - connectivity exception
+     *
+     * @return
+     */
+    Observable<Throwable> getExceptionEvent();
+
+        /**
+         * The presence information that this client is conveying to cloud.
+         *
+         * @return
+         */
+    UserAgent getUserAgent();
+
+    /**
+     * The SignalServer uses a separate id to track you, because it's an Id
+     * given to a TCP/IP connection, not a user.
+     *
+     * The server gives out clientIds
+     *
+     * @return the id that the SignalServer has for us
+     */
+    String getClientId();
 
 }

@@ -9,8 +9,9 @@ import java.util.concurrent.Executor;
  * Time: 5:11 PM
  */
 public class NullExecutor implements Executor {
+
     @Override
-    public void execute(Runnable command) {
+    public void execute(Runnable runnable) {
         // fuck em, don't execute.
     }
 }

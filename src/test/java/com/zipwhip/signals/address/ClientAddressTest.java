@@ -1,5 +1,6 @@
 package com.zipwhip.signals.address;
 
+import com.zipwhip.signals2.address.ClientAddress;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;

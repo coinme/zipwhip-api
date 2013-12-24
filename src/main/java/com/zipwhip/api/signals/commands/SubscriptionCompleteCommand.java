@@ -1,35 +1,40 @@
 package com.zipwhip.api.signals.commands;
 
-import java.util.List;
+import java.io.Serializable;
+import java.util.Collection;
 
-import com.zipwhip.signals.message.Action;
-
-public class SubscriptionCompleteCommand extends Command<Object> {
+public class SubscriptionCompleteCommand implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    public static final Action ACTION = Action.SUBSCRIPTION_COMPLETE; // "subscription_complete";
+    private String subscriptionId;
+    private Collection<String> channels;
 
-    private final String subscriptionId;
+    public SubscriptionCompleteCommand() {
 
-    /**
-     * Create a new SubscriptionCompleteCommand
-     *
-     * @param subscriptionId The id for your subscription.
-     * @param channels       The list of channels subscribed to.
-     */
-    public SubscriptionCompleteCommand(String subscriptionId, List<Object> channels) {
+    }
+
+    public SubscriptionCompleteCommand(String subscriptionId, Collection<String> channels) {
+        this();
+
         this.subscriptionId = subscriptionId;
-        setCommands(channels);
+        this.channels = channels;
+    }
+
+    public void setSubscriptionId(String subscriptionId) {
+        this.subscriptionId = subscriptionId;
+    }
+
+    public void setChannels(Collection<String> channels) {
+        this.channels = channels;
     }
 
     public String getSubscriptionId() {
         return subscriptionId;
     }
 
-    @Override
-    public Action getAction() {
-        return ACTION;
+    public Collection<String> getChannels() {
+        return channels;
     }
 
     @Override

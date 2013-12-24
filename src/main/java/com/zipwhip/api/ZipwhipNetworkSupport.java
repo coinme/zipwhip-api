@@ -6,6 +6,7 @@ import com.zipwhip.api.response.ServerResponse;
 import com.zipwhip.api.response.StringServerResponse;
 import com.zipwhip.concurrent.DefaultObservableFuture;
 import com.zipwhip.concurrent.ExecutorFactory;
+import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.events.Observer;
 import com.zipwhip.lifecycle.CascadingDestroyableBase;
@@ -219,7 +220,7 @@ public abstract class ZipwhipNetworkSupport extends CascadingDestroyableBase {
             throw new Exception("The connection is not authenticated, can't continue.");
         }
 
-        final ObservableFuture<T> result = new DefaultObservableFuture<T>(this, callbackExecutor);
+        final MutableObservableFuture<T> result = new DefaultObservableFuture<T>(this, callbackExecutor);
 
         final ObservableFuture<String> responseFuture;
 
@@ -300,7 +301,7 @@ public abstract class ZipwhipNetworkSupport extends CascadingDestroyableBase {
             throw new Exception("The connection is not authenticated, can't continue.");
         }
 
-        final ObservableFuture<byte[]> result = new DefaultObservableFuture<byte[]>(this, callbackExecutor);
+        final MutableObservableFuture<byte[]> result = new DefaultObservableFuture<byte[]>(this, callbackExecutor);
 
         final ObservableFuture<InputStream> responseFuture = getConnection().sendBinaryResponse(method, params);
 
@@ -397,15 +398,15 @@ public abstract class ZipwhipNetworkSupport extends CascadingDestroyableBase {
 
     protected static class ParsableServerResponse<T> {
 
-        private ObservableFuture<T> future;
+        private MutableObservableFuture<T> future;
         private ServerResponse serverResponse;
 
-        private ParsableServerResponse(ObservableFuture<T> future, ServerResponse serverResponse) {
+        private ParsableServerResponse(MutableObservableFuture<T> future, ServerResponse serverResponse) {
             this.future = future;
             this.serverResponse = serverResponse;
         }
 
-        public ObservableFuture<T> getFuture() {
+        public MutableObservableFuture<T> getFuture() {
             return future;
         }
 

@@ -1,9 +1,7 @@
 package com.zipwhip.api.response;
 
 import com.zipwhip.api.dto.*;
-import com.zipwhip.api.signals.Signal;
-import com.zipwhip.signals.PresenceUtil;
-import com.zipwhip.signals.presence.Presence;
+import com.zipwhip.signals2.presence.Presence;
 import com.zipwhip.util.StringUtil;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -41,18 +39,17 @@ public class JsonResponseParser implements ResponseParser {
         String responseKey = "response";
 
         boolean success = thing.optBoolean("success");
-        Map<String, Map<String, List<Signal>>> sessions = null;
 
         // IS THIS A COMPLEX OBJECT?
         JSONObject jsonObject = thing.optJSONObject(responseKey);
         if (jsonObject != null) {
-            return new ObjectServerResponse(response, success, jsonObject, sessions);
+            return new ObjectServerResponse(response, success, jsonObject);
         }
 
         // IS THIS AN ARRAY?
         JSONArray jsonArray = thing.optJSONArray(responseKey);
         if (jsonArray != null) {
-            return new ArrayServerResponse(response, success, jsonArray, sessions);
+            return new ArrayServerResponse(response, success, jsonArray);
         }
 
         // IS THIS A STRING?
@@ -61,16 +58,16 @@ public class JsonResponseParser implements ResponseParser {
         // Unfortunately the JSON libs in Android coerce bool into Strings
         if (string != null && !string.equalsIgnoreCase("true") && !string.equalsIgnoreCase("false")) {
             // a string
-            return new StringServerResponse(response, success, string, sessions);
+            return new StringServerResponse(response, success, string);
         }
 
         /// MIGHT BE A BOOLEAN
         try {
             boolean bool = thing.getBoolean(responseKey);
-            return new BooleanServerResponse(response, success, bool, sessions);
+            return new BooleanServerResponse(response, success, bool);
         } catch (Exception e) {
             // NOPE, JUST RETURN THE RAW RESULT
-            return new StringServerResponse(response, true, response, null);
+            return new StringServerResponse(response, true, response);
         }
     }
 
@@ -344,7 +341,6 @@ public class JsonResponseParser implements ResponseParser {
 
     @Override
     public List<Presence> parsePresence(ServerResponse serverResponse) throws Exception {
-
         JSONObject raw = new JSONObject(serverResponse.getRaw());
         JSONObject response = raw.optJSONObject("response");
         JSONArray result = response.getJSONArray("result");
@@ -352,7 +348,10 @@ public class JsonResponseParser implements ResponseParser {
         if (result.length() > 1) {
             throw new Exception(String.format("More than one result array for this presence category. %s", result));
         }
-        return PresenceUtil.getInstance().parse(result.optJSONObject(0).optJSONArray("presenceList"));
+
+        // TODO:
+//        return PresenceUtil.getInstance().parse(result.optJSONObject(0).optJSONArray("presenceList"));
+        return null;
     }
 
     @Override

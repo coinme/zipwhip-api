@@ -1,10 +1,5 @@
 package com.zipwhip.api.response;
 
-import com.zipwhip.api.signals.Signal;
-
-import java.util.List;
-import java.util.Map;
-
 /**
  * Created by IntelliJ IDEA.
  * Date: Jul 18, 2009
@@ -14,8 +9,8 @@ import java.util.Map;
  */
 public class NullServerResponse extends ServerResponse {
 
-    public NullServerResponse(String raw, boolean success, Map<String, Map<String, List<Signal>>> sessions) {
-        super(raw, success, sessions);
+    public NullServerResponse(String raw, boolean success) {
+        super(raw, success);
     }
 
 }

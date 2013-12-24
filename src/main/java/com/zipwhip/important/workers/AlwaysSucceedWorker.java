@@ -1,6 +1,7 @@
 package com.zipwhip.important.workers;
 
 import com.zipwhip.concurrent.DefaultObservableFuture;
+import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.important.Worker;
 
@@ -14,7 +15,7 @@ public class AlwaysSucceedWorker implements Worker {
 
     @Override
     public ObservableFuture execute(Object o) throws Exception {
-        ObservableFuture future = new DefaultObservableFuture(this);
+        MutableObservableFuture future = new DefaultObservableFuture(this);
 
         future.setSuccess(null);
 

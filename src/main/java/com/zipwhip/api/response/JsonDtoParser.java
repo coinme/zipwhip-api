@@ -241,18 +241,18 @@ public class JsonDtoParser {
     public List<MessageToken> parseMessageTokens(JSONObject baseResponse, JSONArray array) throws JSONException {
 
         List<MessageToken> result = new ArrayList<MessageToken>();
-        String rootMessageID = baseResponse.optString("root");
+        long rootMessageID = Long.valueOf(baseResponse.optString("root"));
         int len = array.length();
         for (int i = 0; i < len; i++) {
 
             JSONObject json = array.getJSONObject(i);
             MessageToken token = new MessageToken();
 
-            token.setMessage(json.optString("message"));
+            token.setMessageId(Long.valueOf(json.optString("message")));
             token.setDeviceId(parseLong(json, "device")); // will be 0 if it is a self message
             token.setContactId(parseLong(json, "contact")); // will be 0 if it is a self message
             token.setFingerprint(json.optString("fingerprint"));
-            token.setRootMessage(rootMessageID);
+            token.setRootMessageId(rootMessageID);
 
             result.add(token);
         }

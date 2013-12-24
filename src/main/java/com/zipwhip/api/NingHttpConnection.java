@@ -4,6 +4,7 @@ import com.ning.http.client.*;
 import com.ning.http.multipart.FilePart;
 import com.zipwhip.api.request.RequestBuilder;
 import com.zipwhip.concurrent.DefaultObservableFuture;
+import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.lifecycle.CascadingDestroyableBase;
 import com.zipwhip.util.CollectionUtil;
@@ -189,7 +190,7 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
         // convert the map into a key/value HTTP params string
         rb.params(params);
 
-        final ObservableFuture<String> responseFuture = new DefaultObservableFuture<String>(this, workerExecutor);
+        final MutableObservableFuture<String> responseFuture = new DefaultObservableFuture<String>(this, workerExecutor);
 
         try {
             com.ning.http.client.RequestBuilder builder = new com.ning.http.client.RequestBuilder();
@@ -274,7 +275,7 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
         // convert the map into a key/value HTTP params string
         rb.params(params);
 
-        final ObservableFuture<InputStream> responseFuture = new DefaultObservableFuture<InputStream>(this, workerExecutor);
+        final MutableObservableFuture<InputStream> responseFuture = new DefaultObservableFuture<InputStream>(this, workerExecutor);
 
         try {
             final AsyncHttpClient.BoundRequestBuilder requestBuilder = asyncHttpClient.prepareGet(UrlUtil.getSignedUrl(host, apiVersion, method, rb.build(), sessionKey, authenticator));

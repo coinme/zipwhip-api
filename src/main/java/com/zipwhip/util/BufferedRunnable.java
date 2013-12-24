@@ -46,4 +46,24 @@ public class BufferedRunnable implements Runnable, TimerTask {
     public void run(Timeout timeout) throws Exception {
         runnable.run();
     }
+
+    public Timer getTimer() {
+        return timer;
+    }
+
+    public Runnable getRunnable() {
+        return runnable;
+    }
+
+    public long getTime() {
+        return time;
+    }
+
+    public TimeUnit getTimeUnit() {
+        return timeUnit;
+    }
+
+    public Timeout getTimeout() {
+        return timeout;
+    }
 }

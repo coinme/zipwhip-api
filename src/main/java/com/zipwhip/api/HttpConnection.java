@@ -3,6 +3,7 @@ package com.zipwhip.api;
 import com.zipwhip.api.request.RequestBuilder;
 import com.zipwhip.concurrent.DefaultObservableFuture;
 import com.zipwhip.concurrent.ExecutorFactory;
+import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.executors.NamedThreadFactory;
 import com.zipwhip.lifecycle.CascadingDestroyableBase;
@@ -151,7 +152,7 @@ public class HttpConnection extends CascadingDestroyableBase implements ApiConne
     private ObservableFuture<String> send(final String method, final String params) {
 
         // NOTE: if this is a SimpleExecutor (single threaded) then this will be a deadlock.
-        final ObservableFuture<String> future = new DefaultObservableFuture<String>(this, workerExecutor);
+        final MutableObservableFuture<String> future = new DefaultObservableFuture<String>(this, workerExecutor);
 
         bossExecutor.execute(new Runnable() {
             @Override

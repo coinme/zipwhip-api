@@ -8,6 +8,7 @@ import com.zipwhip.api.dto.EnrollmentResult;
 import com.zipwhip.api.dto.MessageToken;
 import com.zipwhip.api.response.MessageListResult;
 import com.zipwhip.concurrent.DefaultObservableFuture;
+import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.lifecycle.DestroyableBase;
 import com.zipwhip.util.SignTool;
@@ -118,7 +119,7 @@ public class DefaultAsyncVendorClientTest {
         result.await();
         Assert.assertTrue(result.isSuccess());
         Assert.assertNotNull(result.getResult());
-        Assert.assertEquals(result.getResult().get(0).getMessage(), "7373193f-cb64-4e37-9ed6-a79d57fab524");
+        Assert.assertEquals(result.getResult().get(0).getMessageId(), "7373193f-cb64-4e37-9ed6-a79d57fab524");
     }
 
     @Test
@@ -245,7 +246,7 @@ public class DefaultAsyncVendorClientTest {
         @Override
         public ObservableFuture<String> send(String method, Map<String, Object> params) throws Exception {
 
-            ObservableFuture<String> result = new DefaultObservableFuture<String>(this);
+            MutableObservableFuture<String> result = new DefaultObservableFuture<String>(this);
 
             if (ZipwhipNetworkSupport.USER_ENROLL.equalsIgnoreCase(method)) {
                 result.setSuccess(ENROLLMENT_RESULT);

@@ -15,7 +15,7 @@ public class MessageToken implements Serializable {
     /**
      * This is the message uuid
      */
-    String message;
+    long messageId;
     long deviceId;
     long contactId;
     String fingerprint;
@@ -25,14 +25,14 @@ public class MessageToken implements Serializable {
      * In situations where a sendMessage call returns more than one MessageToken, the rootMessage will
      * be the same across all MessageTokens.
      */
-    String rootMessage;
+    long rootMessageId;
 
-    public String getMessage() {
-        return message;
+    public long getMessageId() {
+        return messageId;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
+    public void setMessageId(long messageId) {
+        this.messageId = messageId;
     }
 
     public long getDeviceId() {
@@ -59,19 +59,19 @@ public class MessageToken implements Serializable {
         this.fingerprint = fingerprint;
     }
 
-    public String getRootMessage() {
-        return rootMessage;
+    public long getRootMessageId() {
+        return rootMessageId;
     }
 
-    public void setRootMessage(String rootMessage) {
-        this.rootMessage = rootMessage;
+    public void setRootMessageId(long rootMessageId) {
+        this.rootMessageId = rootMessageId;
     }
 
     @Override
     public String toString() {
         StringBuilder toStringBuilder = new StringBuilder("==> MessageToken details:");
-        toStringBuilder.append("\nMessage: ").append(message);
-        toStringBuilder.append("\nRoot Message: ").append(rootMessage);
+        toStringBuilder.append("\nMessage: ").append(messageId);
+        toStringBuilder.append("\nRoot Message: ").append(rootMessageId);
         toStringBuilder.append("\nDeviceId: ").append(deviceId);
         toStringBuilder.append("\nContactId: ").append(contactId);
         toStringBuilder.append("\nFingerprint: ").append(fingerprint);
@@ -87,20 +87,20 @@ public class MessageToken implements Serializable {
 
         if (contactId != that.contactId) return false;
         if (deviceId != that.deviceId) return false;
+        if (messageId != that.messageId) return false;
+        if (rootMessageId != that.rootMessageId) return false;
         if (fingerprint != null ? !fingerprint.equals(that.fingerprint) : that.fingerprint != null) return false;
-        if (message != null ? !message.equals(that.message) : that.message != null) return false;
-        if (rootMessage != null ? !rootMessage.equals(that.rootMessage) : that.rootMessage != null) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = message != null ? message.hashCode() : 0;
+        int result = (int) (messageId ^ (messageId >>> 32));
         result = 31 * result + (int) (deviceId ^ (deviceId >>> 32));
         result = 31 * result + (int) (contactId ^ (contactId >>> 32));
-        result = 31 * result + (fingerprint != null ? fingerprint.hashCode() : 0);
-        result = 31 * result + (rootMessage != null ? rootMessage.hashCode() : 0);
+        result = 31 * result + fingerprint.hashCode();
+        result = 31 * result + (int) (rootMessageId ^ (rootMessageId >>> 32));
         return result;
     }
 }

@@ -1,7 +1,5 @@
 package com.zipwhip.util;
 
-import com.zipwhip.api.signals.sockets.ConnectionState;
-import com.zipwhip.util.StateManager;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -14,6 +12,10 @@ import static junit.framework.Assert.*;
  * Time: 3:52 PM
  */
 public class StateManagerTest {
+
+    enum ConnectionState {
+        NONE, CONNECTED, DISCONNECTED, CONNECTING, DISCONNECTING
+    }
 
     StateManager<ConnectionState> manager;
 
@@ -92,5 +94,4 @@ public class StateManagerTest {
 
         assertTrue(threw);
     }
-
 }

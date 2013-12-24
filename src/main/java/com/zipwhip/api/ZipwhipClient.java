@@ -2,14 +2,10 @@ package com.zipwhip.api;
 
 import com.zipwhip.api.dto.*;
 import com.zipwhip.api.settings.SettingsStore;
-import com.zipwhip.api.signals.Signal;
 import com.zipwhip.api.signals.SignalProvider;
-import com.zipwhip.api.signals.sockets.ConnectionHandle;
-import com.zipwhip.concurrent.ObservableFuture;
-import com.zipwhip.events.Observer;
 import com.zipwhip.lifecycle.Destroyable;
-import com.zipwhip.signals.presence.Presence;
-import com.zipwhip.signals.presence.PresenceCategory;
+import com.zipwhip.signals2.presence.Presence;
+import com.zipwhip.signals2.presence.UserAgentCategory;
 
 import java.io.File;
 import java.util.Collection;
@@ -168,8 +164,6 @@ public interface ZipwhipClient extends Destroyable {
      * @throws Exception if an error occurs communicating with Zipwhip or parsing the response.
      */
     Contact saveUser(Contact contact) throws Exception;
-
-    void signalsConnect(String clientId, PresenceCategory category) throws Exception;
 
     /**
      * Saves or updates the user information.  For all values for which null is passed in, that value will remain unchanged,
@@ -370,25 +364,6 @@ public interface ZipwhipClient extends Destroyable {
     boolean deleteMessage(List<Long> ids) throws Exception;
 
     /**
-     * Returns a MessageStatus object
-     *
-     * @param uuid - message uuid
-     * @return A MessageStatus DTO matching the uuid.
-     * @throws Exception if an error occurs communicating with Zipwhip
-     * @deprecated use {@code getMessageStatus(Long id)}
-     */
-    MessageStatus getMessageStatus(String uuid) throws Exception;
-
-    /**
-     * Returns a MessageStatus object
-     *
-     * @param id - message id
-     * @return A MessageStatus DTO matching the id.
-     * @throws Exception if an error occurs communicating with Zipwhip
-     */
-    MessageStatus getMessageStatus(Long id) throws Exception;
-
-    /**
      * Returns the contact for the provided contact id.
      *
      * @param id The id of the contact.
@@ -413,7 +388,7 @@ public interface ZipwhipClient extends Destroyable {
      * @return List of presences for category and session
      * @throws Exception if an error occurs communicating with Zipwhip
      */
-    List<Presence> getPresence(PresenceCategory category) throws Exception;
+    List<Presence> getPresence(UserAgentCategory category) throws Exception;
 
     /**
      * Send a signal via Zipwhip SignalServer.
@@ -570,11 +545,11 @@ public interface ZipwhipClient extends Destroyable {
     /**
      * Query Zipwhip Face Ecosystem for a user's preferred profile name.
      *
-     * @param phoneNumber The phone number of the user you wish to query.
+     * @param mobileNumber The mobile number of the user you wish to query.
      * @return The user's full name if it exists or empty string.
      * @throws Exception if an error occurs communicating with Zipwhip or parsing the response.
      */
-    String getFaceName(String phoneNumber) throws Exception;
+    String getFaceName(String mobileNumber) throws Exception;
 
 
     /**
@@ -662,83 +637,6 @@ public interface ZipwhipClient extends Destroyable {
      * @throws Exception if an error occurs communicating with Zipwhip or parsing the result.
      */
     boolean saveTinyUrl(String key, String mimeType, File file) throws Exception;
-
-    /**
-     * Connect to Zipwhip Signals if setup.
-     *
-     * @param presence a Presence object to pass to the SignalServer
-     * @return so you can wait until login succeeds
-     * @throws Exception any connection problem
-     */
-    ObservableFuture<ConnectionHandle> connect(Presence presence) throws Exception;
-
-    /**
-     * Connect to Zipwhip Signals if setup.
-     * <p/>
-     * Will connect to the SignalServer via the SignalProvider and then execute a /signals/connect
-     * webcall to Zipwhip (if needed). Will only unblock when 5 events happen (with timeout)
-     * <p/>
-     * 1. Connect to SignalsServer
-     * 2. Write a {action:connect} to SignalServer
-     * 3. Receive a {action:connect} back from SignalServer
-     * 4. POST /signals/connect to ZipwhipCloud
-     * 5. Receive a SubscriptionCompleteCommand from SignalServer
-     * <p/>
-     * This means your TCP connection is "bound" to your sessionKey.
-     *
-     * @return so you can wait until login succeeds
-     * @throws Exception any connection problem
-     */
-    ObservableFuture<ConnectionHandle> connect() throws Exception;
-
-    /**
-     * If connecting, returns false.
-     * If signalProvider.getConnectionState() == ConnectionState.CONNECTED, returns authenticated;
-     * If authenticated, returns true;
-     * <p/>
-     * Authenticated means that we have a SubscriptionCompleteCommand to leverage.
-     * <p/>
-     * Within the context of ZipwhipClient, we have defined the "connected" state
-     * to mean both having a TCP connection AND having a SubscriptionComplete.
-     * (ie: signalProvider.connected & signalProvider.authenticated & isSubscribed)
-     *
-     * @return
-     */
-    boolean isConnected();
-
-    /**
-     * Tell the SignalProvider to disconnect from the server.
-     *
-     * @return an event that tells you its complete
-     * @throws Exception if an I/O happens while disconnecting
-     */
-    ObservableFuture<ConnectionHandle> disconnect();
-
-    /**
-     * Tell the SignalProvider to disconnect from the server.  If causedByNetwork, the reconnect strategy will
-     * still be enabled.
-     *
-     * @return an event that tells you its complete
-     * @throws Exception if an I/O happens while disconnecting
-     */
-    ObservableFuture<ConnectionHandle> disconnect(boolean causedByNetwork);
-
-    /**
-     * Listen for signals. This is a convenience method
-     *
-     * @param observer An observer object to receive callbacks on
-     */
-    void addSignalObserver(Observer<List<Signal>> observer);
-
-    /**
-     * Listen for connection changes. This is a convenience method
-     * <p/>
-     * This observer will be called if:
-     * We lose our TCP/IP connection to the SignalServer
-     *
-     * @param observer An observer object to receive callbacks on
-     */
-    void addSignalsConnectionObserver(Observer<Boolean> observer);
 
     /**
      * A connection to Zipwhip over a medium.

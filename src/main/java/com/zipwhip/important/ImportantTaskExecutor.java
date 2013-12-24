@@ -1,9 +1,6 @@
 package com.zipwhip.important;
 
-import com.zipwhip.concurrent.NestedObservableFuture;
-import com.zipwhip.concurrent.DefaultObservableFuture;
-import com.zipwhip.concurrent.FakeFailingObservableFuture;
-import com.zipwhip.concurrent.ObservableFuture;
+import com.zipwhip.concurrent.*;
 import com.zipwhip.events.Observer;
 import com.zipwhip.executors.SimpleExecutor;
 import com.zipwhip.important.schedulers.TimerScheduler;
@@ -66,7 +63,7 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
         final String requestId = UUID.randomUUID().toString();
 
         // we're returning this value.
-        final ObservableFuture<T> parentFuture = createObservableFuture(executor, request);
+        final MutableObservableFuture<T> parentFuture = createObservableFuture(executor, request);
 
         /**
          * Schedule a timeout in the future if it has an expirationDate.
@@ -92,7 +89,10 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
 
                             // sync over the requestFuture to the parentFuture.
                             // ie: if the requestFuture is already done then cascade that over.
-                            NestedObservableFuture.syncState(parentFuture, requestFuture);
+                            if (requestFuture instanceof MutableObservableFuture) {
+                                NestedObservableFuture.syncState(parentFuture, (MutableObservableFuture)requestFuture);
+                            }
+
                             NestedObservableFuture.syncState(requestFuture, parentFuture);
 
                             // NOTE: We are doing it twice on purpose. If someone uses an ObservableFuture
@@ -113,7 +113,9 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
                                     public void notify(Object sender, ObservableFuture<T> item) {
                                         // sync over the requestFuture to the parentFuture.
                                         // ie: if the requestFuture is already done then cascade that over.
-                                        NestedObservableFuture.syncState(parentFuture, requestFuture);
+                                        if (requestFuture instanceof MutableObservableFuture) {
+                                            NestedObservableFuture.syncState(parentFuture, (MutableObservableFuture)requestFuture);
+                                        }
 
                                         if (expirationDate != null) {
                                             scheduler.cancel(requestId);
@@ -132,6 +134,7 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
                                 scheduledRequest.setRequestFuture(requestFuture);
                             }
                         } catch (Exception e) {
+                            LOGGER.error("ImportantTask error!", e);
                             parentFuture.setFailure(e);
                         } finally {
                             LOGGER.debug(String.format("Finished synchronous execution portion for task %s, future: %s", request, parentFuture));
@@ -154,11 +157,11 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
         return parentFuture;
     }
 
-    private <T> ScheduledRequest<T> createScheduledRequestIfExpiring(ObservableFuture<T> parentFuture, String requestId, Date expirationDate, Callable<ObservableFuture<T>> request) {
+    private <T> ScheduledRequest<T> createScheduledRequestIfExpiring(MutableObservableFuture<T> parentFuture, String requestId, Date expirationDate, Callable<ObservableFuture<T>> request) {
         ScheduledRequest<T> scheduledRequest = null;
         expirationDate = getExpirationDate(expirationDate);
         if (expirationDate != null) {
-            scheduledRequest = new ScheduledRequest(requestId, request, parentFuture, expirationDate);
+            scheduledRequest = new ScheduledRequest<T>(requestId, request, parentFuture, expirationDate);
 
             // in case it times out
             queuedRequests.put(requestId, scheduledRequest);
@@ -212,7 +215,9 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
                     scheduledRequest.getParentFuture().setFailure(new TimeoutException("Too late? " + expirationDate));
                 } else {
                     // it just simply timed out normally
-                    scheduledRequest.getRequestFuture().setFailure(new TimeoutException("Too late? " + expirationDate));
+                    if (scheduledRequest.getRequestFuture() instanceof MutableObservableFuture) {
+                        ((MutableObservableFuture<?>)scheduledRequest.getRequestFuture()).setFailure(new TimeoutException("Too late? " + expirationDate));
+                    }
                 }
             } else {
                 LOGGER.warn(String.format("The expiration was too early?!?!! expires: %s", expirationDate));
@@ -275,20 +280,20 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
     public static class ScheduledRequest<T> {
 
         private final Callable<ObservableFuture<T>> request;
-        private final ObservableFuture<T> parentFuture;
+        private final MutableObservableFuture<T> parentFuture;
         private final String requestId;
         private final Date expirationDate;
 
         private ObservableFuture<T> requestFuture;
 
-        public ScheduledRequest(String requestId, Callable<ObservableFuture<T>> request, ObservableFuture<T> parentFuture, Date expirationDate) {
+        public ScheduledRequest(String requestId, Callable<ObservableFuture<T>> request, MutableObservableFuture<T> parentFuture, Date expirationDate) {
             this.requestId = requestId;
             this.parentFuture = parentFuture;
             this.request = request;
             this.expirationDate = expirationDate;
         }
 
-        public ObservableFuture<T> getParentFuture() {
+        public MutableObservableFuture<T> getParentFuture() {
             return parentFuture;
         }
 

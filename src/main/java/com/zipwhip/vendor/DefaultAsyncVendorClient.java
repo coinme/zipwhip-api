@@ -8,6 +8,7 @@ import com.zipwhip.api.dto.EnrollmentResult;
 import com.zipwhip.api.response.BooleanServerResponse;
 import com.zipwhip.api.response.MessageListResult;
 import com.zipwhip.concurrent.DefaultObservableFuture;
+import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.util.CollectionUtil;
 import com.zipwhip.util.InputRunnable;
@@ -653,7 +654,7 @@ public class DefaultAsyncVendorClient extends ZipwhipNetworkSupport implements A
     }
 
     private <T> ObservableFuture<T> failureFuture(Exception e) {
-        ObservableFuture<T> future = new DefaultObservableFuture<T>(this);
+        MutableObservableFuture<T> future = new DefaultObservableFuture<T>(this);
         future.setFailure(e);
         return future;
     }

@@ -1,20 +1,25 @@
 package com.zipwhip.api.signals.commands;
 
-import com.zipwhip.signals.message.Action;
+import java.io.Serializable;
+import java.util.Set;
 
 /**
  * @author jed
  */
-public class DisconnectCommand extends Command {
+public class DisconnectCommand implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    public static final Action ACTION = Action.DISCONNECT; // "disconnect";
+    private static final long serialVersionUID = 8295025965465885068L;
 
     private String host;
     private int port;
     private int reconnectDelay;
     private boolean stop;
     private boolean ban;
+    private Set<String> subscriptionIds;
+
+    public DisconnectCommand() {
+
+    }
 
     /**
      * Create a new DisconnectCommand
@@ -57,9 +62,28 @@ public class DisconnectCommand extends Command {
         this.ban = ban;
     }
 
-    @Override
-    public Action getAction() {
-        return ACTION;
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public void setReconnectDelay(int reconnectDelay) {
+        this.reconnectDelay = reconnectDelay;
+    }
+
+    public void setStop(boolean stop) {
+        this.stop = stop;
+    }
+
+    public Set<String> getSubscriptionIds() {
+        return subscriptionIds;
+    }
+
+    public void setSubscriptionIds(Set<String> subscriptionIds) {
+        this.subscriptionIds = subscriptionIds;
     }
 
     @Override
