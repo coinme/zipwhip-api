@@ -46,7 +46,7 @@ public class DefaultZipwhipClient extends ClientZipwhipNetworkSupport implements
      *
      * @param connection     The connection to Zipwhip API
      * @param signalProvider The connection client for Zipwhip SignalServer.
-     * @param executor The executor that's used for asynchronous event processing (including ApiConnection.send() and signalProvider.onXXXXX()).
+     * @param executor       The executor that's used for asynchronous event processing (including ApiConnection.send() and signalProvider.onXXXXX()).
      */
     public DefaultZipwhipClient(SettingsStore store, Executor executor, ImportantTaskExecutor importantTaskExecutor, ApiConnection connection, SignalProvider signalProvider) {
         super(store, executor, importantTaskExecutor, connection, signalProvider);
@@ -362,8 +362,12 @@ public class DefaultZipwhipClient extends ClientZipwhipNetworkSupport implements
 
     @Override
     public List<Presence> getPresence(UserAgentCategory category) throws Exception {
-        // TODO:!
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        final Map<String, Object> params = new HashMap<String, Object>();
+        if (category != null && !category.toString().equals(UserAgentCategory.NONE.toString())) {
+            params.put("category", category.toString());
+        }
+
+        return responseParser.parsePresence(executeSync(PRESENCE_GET, params));
     }
 
     @Override

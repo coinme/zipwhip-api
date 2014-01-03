@@ -2,6 +2,8 @@ package com.zipwhip.api.response;
 
 import com.zipwhip.api.dto.*;
 import com.zipwhip.signals2.presence.Presence;
+import com.zipwhip.signals2.presence.UserAgent;
+import com.zipwhip.signals2.presence.UserAgentCategory;
 import com.zipwhip.util.StringUtil;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -349,9 +351,29 @@ public class JsonResponseParser implements ResponseParser {
             throw new Exception(String.format("More than one result array for this presence category. %s", result));
         }
 
-        // TODO:
+        JSONArray jsonArray = result.optJSONObject(0).optJSONArray("presenceList");
+        if (jsonArray.length() < 1) return null;
+
+        final Presence presence = new Presence();
+        presence.setConnected(jsonArray.getJSONObject(0).optBoolean("connected", false));
+        presence.setIp(jsonArray.getJSONObject(0).optString("ip", null));
+
+        final JSONObject categoryJson = jsonArray.getJSONObject(0).optJSONObject("category");
+        final UserAgent userAgent = new UserAgent();
+        if (categoryJson != null) {
+            final String category = categoryJson.optString("name", null);
+            if (category != null) {
+                userAgent.setCategory(Enum.valueOf(UserAgentCategory.class, category));
+            }
+        }
+
+        final JSONObject userAgentJson = jsonArray.getJSONObject(0).optJSONObject("userAgent");
+        userAgent.setBuild(userAgentJson.optString("build"));
+        userAgent.setMakeModel(userAgentJson.optString("makeModel"));
+
+        presence.setUserAgent(userAgent);
+        return Arrays.asList(presence);
 //        return PresenceUtil.getInstance().parse(result.optJSONObject(0).optJSONArray("presenceList"));
-        return null;
     }
 
     @Override
