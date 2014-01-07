@@ -111,6 +111,7 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
     private void init() {
         final AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
         builder.setConnectionTimeoutInMs(10000);
+        builder.setRequestTimeoutInMs(10000);
         asyncHttpClient = new AsyncHttpClient(builder.build());
     }
 
