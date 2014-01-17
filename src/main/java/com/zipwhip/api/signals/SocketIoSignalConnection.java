@@ -233,7 +233,7 @@ public class SocketIoSignalConnection implements SignalConnection {
 
         @Override
         public void onState(int state) {
-            if (state != IOConnection.STATE_INTERRUPTED) {
+            if (state != IOConnection.STATE_INTERRUPTED && state != IOConnection.STATE_INVALID) {
                 return;
             }
 

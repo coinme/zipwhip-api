@@ -340,5 +340,9 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
     public void setProxyServer(ProxyServer proxyServer) {
         this.proxyServer = proxyServer;
     }
+
+    public AsyncHttpClient getAsyncHttpClient() {
+        return asyncHttpClient;
+    }
 }
 

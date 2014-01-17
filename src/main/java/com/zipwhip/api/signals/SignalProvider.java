@@ -5,6 +5,7 @@ import com.zipwhip.api.signals.dto.DeliveredMessage;
 import com.zipwhip.api.signals.dto.SubscribeResult;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.events.Observable;
+import com.zipwhip.events.ObservableHelper;
 import com.zipwhip.lifecycle.Destroyable;
 import com.zipwhip.signals2.presence.Presence;
 import com.zipwhip.signals2.presence.UserAgent;
@@ -12,7 +13,7 @@ import com.zipwhip.signals2.presence.UserAgent;
 /**
  * Date: 5/7/13
  * Time: 4:41 PM
- *
+ * <p/>
  * SignalProvider is the only class you need to talk with the signal server. The old design broke up the
  * /signals/connect and clientId work into 2 classes.
  *
@@ -26,16 +27,17 @@ public interface SignalProvider extends Destroyable {
     /**
      * Tell it to connect. This call is idempotent, so if multiple calls to
      * a connection provider (if already connected) will have no effect.
-     *
+     * <p/>
      * If you do not have a presence object set on this, it will fail.
-     *
+     * <p/>
      * You must have UserAgent information defined.
      *
-     * @throws IllegalStateException If you do not have userAgent information defined.
      * @return a ObservableFuture task indicating if the connection was successful.
-     * @throws Exception if an error is encountered when connecting
+     * @throws IllegalStateException If you do not have userAgent information defined.
+     * @throws Exception             if an error is encountered when connecting
      */
     ObservableFuture<Void> connect(UserAgent userAgent) throws IllegalStateException;
+
     ObservableFuture<Void> connect(UserAgent userAgent, String clientId, String token) throws IllegalStateException;
 
     /**
@@ -48,7 +50,7 @@ public interface SignalProvider extends Destroyable {
 
     /**
      * Bind a sessionKey+subscriptionId to a clientId. The server will respond with a SubscriptionCompleteCommand.
-     *
+     * <p/>
      * The server will remember this binding permanently. You only need to do this during the initial login phase
      * of your app.
      *
@@ -59,8 +61,6 @@ public interface SignalProvider extends Destroyable {
     ObservableFuture<SubscribeResult> subscribe(String sessionKey, String subscriptionId);
 
     /**
-     *
-     *
      * @param subscriptionId
      * @return
      */
@@ -91,7 +91,7 @@ public interface SignalProvider extends Destroyable {
 
     /**
      * Fires when ANY presence changes for ANY clientId associated with your channels.
-     *
+     * <p/>
      * For example, clientId1 and clientId2 both are associated with user1. Both clients will hear each others presence
      * change events.
      *
@@ -99,11 +99,16 @@ public interface SignalProvider extends Destroyable {
      */
     Observable<Event<Presence>> getPresenceChangedEvent();
 
+    /**
+     * Notifies when the connection state has changed. Call <code>isConnected</code> to check the state.
+     */
+    ObservableHelper<Void> getConnectionChangedEvent();
+
     Observable<DeliveredMessage> getSignalReceivedEvent();
 
     /**
      * If any parsing exception occurs, or connection exception. Should generally test for the exception type
-     *
+     * <p/>
      * JsonParseException - json exception
      * SocketIOException - connectivity exception
      *
@@ -111,17 +116,17 @@ public interface SignalProvider extends Destroyable {
      */
     Observable<Throwable> getExceptionEvent();
 
-        /**
-         * The presence information that this client is conveying to cloud.
-         *
-         * @return
-         */
+    /**
+     * The presence information that this client is conveying to cloud.
+     *
+     * @return
+     */
     UserAgent getUserAgent();
 
     /**
      * The SignalServer uses a separate id to track you, because it's an Id
      * given to a TCP/IP connection, not a user.
-     *
+     * <p/>
      * The server gives out clientIds
      *
      * @return the id that the SignalServer has for us

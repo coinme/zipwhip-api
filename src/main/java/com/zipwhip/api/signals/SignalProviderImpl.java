@@ -387,6 +387,10 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         return presenceChangedEvent;
     }
 
+    public ObservableHelper<Void> getConnectionChangedEvent() {
+        return connectionChangedEvent;
+    }
+
     @Override
     public Observable<DeliveredMessage> getSignalReceivedEvent() {
         return signalReceivedEvent;
