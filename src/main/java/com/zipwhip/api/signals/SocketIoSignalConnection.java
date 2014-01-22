@@ -248,7 +248,7 @@ public class SocketIoSignalConnection implements SignalConnection {
         long retryInSeconds = retryStrategy.getNextRetryInterval(retryCount);
 
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(String.format("Scheduling reconnect in %s seconds.", FutureDateUtil.inFuture(retryInSeconds, TimeUnit.SECONDS)));
+            LOGGER.debug(String.format("Scheduling reconnect in %s seconds at %s.", retryInSeconds, FutureDateUtil.inFuture(retryInSeconds, TimeUnit.SECONDS)));
         }
 
         timer.newTimeout(reconnectTimerTask, retryInSeconds, TimeUnit.SECONDS);
