@@ -119,11 +119,6 @@ public class SocketIoSignalConnection implements SignalConnection {
         @Override
         public ObservableFuture<Void> call() throws Exception {
             synchronized (SocketIoSignalConnection.this) {
-
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Connecting to " + url);
-                }
-
                 connectFuture = new DefaultObservableFuture<Void>(this, eventExecutor);
 
                 try {
@@ -143,7 +138,6 @@ public class SocketIoSignalConnection implements SignalConnection {
         @Override
         public void run(Timeout timeout) throws Exception {
             if (isConnected()) {
-                LOGGER.debug("Was already connected.");
                 return;
             }
 
@@ -218,11 +212,6 @@ public class SocketIoSignalConnection implements SignalConnection {
                                 GsonUtil.getInt(object.get("code")),
                                 GsonUtil.getString(object.get("message")));
 
-
-                        if (LOGGER.isDebugEnabled()) {
-                            LOGGER.debug("Error event: " + object.get("message"));
-                        }
-
                         exceptionEvent.notifyObservers(SocketIoSignalConnection.this, exception);
                     }
                 }
@@ -239,8 +228,6 @@ public class SocketIoSignalConnection implements SignalConnection {
                 connectFuture.setFailure(socketIOException);
             }
 
-            LOGGER.error("Exception: " + socketIOException);
-
             exceptionEvent.notifyObservers(SocketIoSignalConnection.this, socketIOException);
         }
 
@@ -248,10 +235,6 @@ public class SocketIoSignalConnection implements SignalConnection {
         public void onState(int state) {
             if (state != IOConnection.STATE_INTERRUPTED && state != IOConnection.STATE_INVALID) {
                 return;
-            }
-
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Bad state! Reconnecting later. " + state);
             }
 
             socketIO.disconnect();
@@ -262,17 +245,10 @@ public class SocketIoSignalConnection implements SignalConnection {
     };
 
     private synchronized void reconnectLater() {
-        // TODO: airplane mode check
-
         long retryInSeconds = retryStrategy.getNextRetryInterval(retryCount);
 
-        if (timer == null) {
-            LOGGER.error("Null timer! Can't schedule reconnect!");
-            return;
-        }
-
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(String.format("Scheduling reconnect at: %s", FutureDateUtil.inFuture(retryInSeconds, TimeUnit.SECONDS)));
+            LOGGER.debug(String.format("Scheduling reconnect in %s seconds at %s.", retryInSeconds, FutureDateUtil.inFuture(retryInSeconds, TimeUnit.SECONDS)));
         }
 
         timer.newTimeout(reconnectTimerTask, retryInSeconds, TimeUnit.SECONDS);
