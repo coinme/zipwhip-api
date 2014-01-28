@@ -20,6 +20,16 @@ public class MockSignalSubscribeActor implements SignalsSubscribeActor {
     }
 
     @Override
+    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String scope, String subscriptionId, UserAgent userAgent) {
+        return new DefaultObservableFuture<Void>(this, SimpleExecutor.getInstance());
+    }
+
+    @Override
+    public ObservableFuture<Void> unsubscribe(String clientId, String sessionKey, String scope, String subscriptionId) {
+        return new DefaultObservableFuture<Void>(this, SimpleExecutor.getInstance());
+    }
+
+    @Override
     public ObservableFuture<Void> unsubscribe(String clientId, String sessionKey, String subscriptionId) {
         return new DefaultObservableFuture<Void>(this, SimpleExecutor.getInstance());
     }

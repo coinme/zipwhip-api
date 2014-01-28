@@ -133,6 +133,11 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
     @Override
     public synchronized ObservableFuture<SubscribeResult> subscribe(String sessionKey, String subscriptionId) {
+        return subscribe(sessionKey,  subscriptionId, null);
+    }
+
+    @Override
+    public synchronized ObservableFuture<SubscribeResult> subscribe(String sessionKey, String subscriptionId, String scope) {
         if (!signalConnection.isConnected()) {
             return fail("Not connected");
         }
@@ -159,7 +164,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         // wait until we receive a SubscriptionCompleteCommand.
         //
         return executeWithTimeout(
-                new SignalSubscribeCallback(sessionKey, subscriptionId), FutureDateUtil.in30Seconds());
+                new SignalSubscribeCallback(sessionKey, subscriptionId, scope), FutureDateUtil.in30Seconds());
     }
 
     @Override
@@ -479,6 +484,11 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
     }
 
+    @Override
+    public ObservableFuture<ObservableFuture<Object[]>> emit(String event, Object... objects) {
+        return signalConnection.emit(event, objects);
+    }
+
     public void setSignalConnection(SignalConnection signalConnection) {
         if (this.signalConnection != null) {
             this.signalConnection.getConnectEvent().removeObserver(connectionChangedEvent);
@@ -543,10 +553,16 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         private final String sessionKey;
         private final String subscriptionId;
+        private final String scope;
 
         private SignalSubscribeCallback(String sessionKey, String subscriptionId) {
+            this(sessionKey, subscriptionId, null);
+        }
+
+        private SignalSubscribeCallback(String sessionKey, String subscriptionId, String scope) {
             this.sessionKey = sessionKey;
             this.subscriptionId = subscriptionId;
+            this.scope = scope;
         }
 
         @Override
@@ -562,7 +578,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             }
 
             // Make the call to the server (async).
-            ObservableFuture<Void> future = signalsSubscribeActor.subscribe(getClientId(), sessionKey, subscriptionId, getUserAgent());
+            ObservableFuture<Void> future = signalsSubscribeActor.subscribe(getClientId(), sessionKey, scope, subscriptionId, getUserAgent());
 
             // We ONLY want to cascade the failure.
             // The success will come later when the SubscriptionCompleteCommand comes in.

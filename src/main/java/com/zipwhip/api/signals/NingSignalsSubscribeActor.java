@@ -8,6 +8,7 @@ import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.executors.SimpleExecutor;
 import com.zipwhip.signals2.presence.UserAgent;
+import com.zipwhip.util.StringUtil;
 import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,23 +59,36 @@ public class NingSignalsSubscribeActor implements SignalsSubscribeActor {
 
     @Override
     public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String subscriptionId, UserAgent userAgent) {
+        return subscribe(clientId,  sessionKey, null, subscriptionId, userAgent);
+    }
+
+    @Override
+    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String scope, String subscriptionId, UserAgent userAgent) {
         AsyncHttpClient.BoundRequestBuilder builder = client.preparePost(url);
 
-        applyParameters(builder, clientId, sessionKey, subscriptionId);
+        applyParameters(builder, clientId, sessionKey, subscriptionId, scope);
 
         MutableObservableFuture<Void> future = new DefaultObservableFuture<Void>(this, eventExecutor);
 
         return executeAsync(builder, HANDLER, future);
     }
 
-    protected void applyParameters(AsyncHttpClient.BoundRequestBuilder builder, String clientId, String sessionKey, String subscriptionId) {
+    protected void applyParameters(AsyncHttpClient.BoundRequestBuilder builder, String clientId, String sessionKey, String subscriptionId, String scope) {
         builder.addParameter("clientId", clientId);
         builder.addParameter("session", sessionKey);
         builder.addParameter("subscriptionId", subscriptionId);
+        if (StringUtil.exists(scope)) {
+            builder.addParameter("scope", scope); // defaults to 'device'
+        }
     }
 
     @Override
     public ObservableFuture<Void> unsubscribe(String clientId, String sessionKey, String subscriptionId) {
+        return unsubscribe(clientId, sessionKey, null, subscriptionId);
+    }
+
+    @Override
+    public ObservableFuture<Void> unsubscribe(String clientId, String sessionKey, String scope, String subscriptionId) {
         throw new NotImplementedException();
     }
 

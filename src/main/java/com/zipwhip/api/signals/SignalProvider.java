@@ -61,6 +61,17 @@ public interface SignalProvider extends Destroyable {
     ObservableFuture<SubscribeResult> subscribe(String sessionKey, String subscriptionId);
 
     /**
+     * Bind a sessionKey+subscriptionId to a clientId. The server will respond with a SubscriptionCompleteCommand.
+     * <p/>
+     * The server will remember this binding permanently. You only need to do this during the initial login phase
+     * of your app.
+     *
+     * Use this method to set a specific scope (for example, "carbon" scope)
+     *
+     */
+    ObservableFuture<SubscribeResult> subscribe(String sessionKey, String subscriptionId, String scope);
+
+    /**
      * @param subscriptionId
      * @return
      */
@@ -132,5 +143,21 @@ public interface SignalProvider extends Destroyable {
      * @return the id that the SignalServer has for us
      */
     String getClientId();
+
+    /**
+     * Send something to the server.
+     *
+     * The outer future is for the transmission.
+     *
+     * The inner future is for the acknowledgement from the server.
+     *
+     * Both futures should support timeout.
+     *
+     * @param event
+     * @param objects
+     * @return
+     */
+    ObservableFuture<ObservableFuture<Object[]>> emit(String event, Object... objects);
+
 
 }
