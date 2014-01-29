@@ -1,6 +1,5 @@
 package com.zipwhip.important;
 
-import com.zipwhip.events.ObservableHelper;
 import com.zipwhip.events.Observer;
 import com.zipwhip.important.schedulers.TimerScheduler;
 import com.zipwhip.util.FutureDateUtil;
@@ -22,43 +21,49 @@ import static junit.framework.Assert.fail;
 public class ScopedSchedulerTest {
 
     static Scheduler innerScheduler;
-    static Scheduler outerScheduler;
+    static Scheduler outerScheduler1;
+    static Scheduler outerScheduler2;
+
 
     @BeforeClass
     public static void setUp() {
-        innerScheduler = new TimerScheduler("inner");
-        outerScheduler = new ScopedScheduler(innerScheduler, "outer-");
+        innerScheduler = new TimerScheduler("inner1");
+
+        outerScheduler1 = new ScopedScheduler(innerScheduler, "outer1-");
+        outerScheduler2 = new ScopedScheduler(innerScheduler, "outer2-");
     }
 
     @Test
     public void testNormalSchedule() throws InterruptedException {
-        final CountDownLatch innerLatch = new CountDownLatch(1);
-        final CountDownLatch outerLatch = new CountDownLatch(1);
+        final CountDownLatch latch = new CountDownLatch(2);
 
-        outerScheduler.onScheduleComplete(new Observer<String>() {
+        outerScheduler1.onScheduleComplete(new Observer<String>() {
             @Override
             public void notify(Object sender, String item) {
-                outerLatch.countDown();
+                latch.countDown();
+            }
+        });
+
+        outerScheduler2.onScheduleComplete(new Observer<String>() {
+            @Override
+            public void notify(Object sender, String item) {
+                latch.countDown();
             }
         });
 
         innerScheduler.onScheduleComplete(new Observer<String>() {
             @Override
             public void notify(Object sender, String item) {
-                innerLatch.countDown();
+                latch.countDown();
             }
         });
 
-        outerScheduler.schedule(UUID.randomUUID().toString(), FutureDateUtil.inFuture(50, TimeUnit.MILLISECONDS));
+        outerScheduler1.schedule(UUID.randomUUID().toString(), FutureDateUtil.inFuture(50, TimeUnit.MILLISECONDS));
 
-        innerLatch.await(3, TimeUnit.SECONDS);
+        latch.await(3, TimeUnit.SECONDS);
 
-        if (innerLatch.getCount() > 0) {
-            fail("Inner scheduler didn't fire!");
-        }
-
-        if (outerLatch.getCount() > 0) {
-            fail("Outer scheduler didn't fire!");
+        if (latch.getCount() != 0) {
+            fail("Didn't count down as it should have!");
         }
     }
 }
