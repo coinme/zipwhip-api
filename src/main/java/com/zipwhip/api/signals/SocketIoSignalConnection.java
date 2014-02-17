@@ -72,6 +72,7 @@ public class SocketIoSignalConnection implements SignalConnection {
     @Override
     public synchronized ObservableFuture<Void> connect() {
         if (externalConnectFuture != null) {
+            LOGGER.debug("Tried to connect but already had connect future. Returning that instead.");
             return externalConnectFuture;
         }
 
@@ -155,7 +156,7 @@ public class SocketIoSignalConnection implements SignalConnection {
             });
 
         }
-};
+    };
 
     private final IOCallback callback = new IOCallback() {
         @Override
@@ -187,7 +188,6 @@ public class SocketIoSignalConnection implements SignalConnection {
 
         @Override
         public void onSessionId(String sessionId) {
-
         }
 
         @Override
@@ -233,7 +233,8 @@ public class SocketIoSignalConnection implements SignalConnection {
 
         @Override
         public void onState(int state) {
-            if (state != IOConnection.STATE_INTERRUPTED && state != IOConnection.STATE_INVALID) {
+//            if (state != IOConnection.STATE_INTERRUPTED && state != IOConnection.STATE_INVALID) { // this caused a deadlock
+            if (state != IOConnection.STATE_INTERRUPTED) {
                 return;
             }
 

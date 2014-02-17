@@ -159,5 +159,11 @@ public interface SignalProvider extends Destroyable {
      */
     ObservableFuture<ObservableFuture<Object[]>> emit(String event, Object... objects);
 
+    /**
+     * Will initiate a client-side ping to ensure the connection is still alive. If the ping fails, the reconnect will be handled for you.
+     *
+     * @return
+     */
+    ObservableFuture<String> ping();
 
 }
