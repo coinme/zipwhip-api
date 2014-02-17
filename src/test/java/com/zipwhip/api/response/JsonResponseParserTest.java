@@ -139,7 +139,7 @@ public class JsonResponseParserTest {
         Assert.assertFalse(m.isDeleted());
         Assert.assertEquals("1189375339", m.getFingerprint());
         Assert.assertEquals("Sprint", m.getCarrier());
-        Assert.assertEquals("null", m.getCc());
+        Assert.assertEquals("", m.getCc());
         Assert.assertNull(m.getLastUpdated());
         Assert.assertFalse(m.isHasAttachment());
     }

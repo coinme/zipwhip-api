@@ -235,7 +235,7 @@ public class JsonDtoParser {
      * Parse a List<MessageToken> from a JSONObject if the object contains it.
      *
      * @param array JSONObject to be parsed.
-     * @return A CList<MessageToken>ontact object parsed from the JSON content.
+     * @return A List<MessageToken> object parsed from the JSON content.
      * @throws JSONException If an error is encountered while parsing
      */
     public List<MessageToken> parseMessageTokens(JSONObject baseResponse, JSONArray array) throws JSONException {

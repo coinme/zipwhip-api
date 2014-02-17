@@ -106,6 +106,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         connectFuture = future();
         setClientId(clientId, token);
+        pingCount = 0;
 
         // The reason to use the "importantTaskExecutor" this way is so the future can be timed out.
         // If we issue a connect request and it doesn't come back for 1 minute, we need to be able to

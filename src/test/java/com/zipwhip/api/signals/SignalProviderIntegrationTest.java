@@ -15,6 +15,7 @@ import com.zipwhip.signals2.presence.UserAgentCategory;
 import com.zipwhip.util.CollectionUtil;
 import com.zipwhip.util.StringUtil;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,12 +31,15 @@ import static org.junit.Assert.*;
  * Date: 8/7/13
  * Time: 3:11 PM
  *
+ * Note: this is disabled as it is a full end-to-end integration test.
+ * Comment out the @Ignore annotations and plug in your sessionKey to enable
+ *
  * @author Michael
  * @version 1
  */
-public class SignalProviderTest {
+public class SignalProviderIntegrationTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SignalProviderTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SignalProviderIntegrationTest.class);
 
     SignalProviderImpl signalProvider;
     NingSignalsSubscribeActor actor = new NingSignalsSubscribeActor();
@@ -47,7 +51,7 @@ public class SignalProviderTest {
         SocketIoSignalConnection signalConnection = new SocketIoSignalConnection();
         signalConnection.setImportantTaskExecutor(importantTaskExecutor);
         signalConnection.setGson(gson);
-        signalConnection.setUrl("http://localhost:8000/");
+        signalConnection.setUrl("http://us1.signals.zipwhip.com");
 
         signalProvider = new SignalProviderImpl();
         signalProvider.setSignalsSubscribeActor(actor);
@@ -56,7 +60,7 @@ public class SignalProviderTest {
         signalProvider.setImportantTaskExecutor(importantTaskExecutor);
         signalProvider.setSignalConnection(signalConnection);
 
-        actor.setUrl("http://localhost:8080/signal/subscribe");
+        actor.setUrl("http://network.zipwhip.com/signal/subscribe");
         actor.setClient(new AsyncHttpClient());
     }
 
@@ -69,8 +73,9 @@ public class SignalProviderTest {
     }
 
     @Test
+    @Ignore
     public void testConnect() throws Exception {
-        final String sessionKey = "7bd08322-b2d7-4ca3-880c-5a400cb3f429:677606";
+        final String sessionKey = "23b0151d-7676-4fcd-9092-33b962e261b6:211704504";
         final String subscriptionId = "subscriptionId";
         final String clientId;
 
@@ -157,6 +162,7 @@ public class SignalProviderTest {
     }
 
     @Test
+    @Ignore
     public void testSubscriptionCompleteNeverComesBack() throws Exception {
         signalProvider.setSignalsSubscribeActor(new MockSignalSubscribeActor());
 
@@ -200,6 +206,7 @@ public class SignalProviderTest {
     }
 
     @Test
+    @Ignore
     public void testSubscribeWhenNotConnected() throws ExecutionException, InterruptedException {
         final String sessionKey = "sessionKey";
         final String subscriptionId = "subscriptionId";
@@ -234,6 +241,7 @@ public class SignalProviderTest {
     }
 
     @Test
+    @Ignore
     public void testSubscribeWhenWasConnected() throws ExecutionException, InterruptedException {
         final String sessionKey = "sessionKey";
         final String subscriptionId = "subscriptionId";
