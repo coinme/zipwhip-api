@@ -82,7 +82,7 @@ public class SocketIoSignalConnection implements SignalConnection {
             @Override
             public void notify(Object sender, ObservableFuture<Void> item) {
                 synchronized (SocketIoSignalConnection.this) {
-                    if (item.isSuccess()){
+                    if (item.isSuccess()) {
                         retryCount = 0;
                     }
 
@@ -138,10 +138,6 @@ public class SocketIoSignalConnection implements SignalConnection {
     private TimerTask reconnectTimerTask = new TimerTask() {
         @Override
         public void run(Timeout timeout) throws Exception {
-            if (isConnected()) {
-                return;
-            }
-
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Reconnecting.");
             }
@@ -150,11 +146,11 @@ public class SocketIoSignalConnection implements SignalConnection {
                 @Override
                 public void notify(Object sender, ObservableFuture<Void> item) {
                     if (!item.isSuccess()) {
+                        LOGGER.warn("Couldn't connect, scheduling reconnect for later.");
                         reconnectLater();
                     }
                 }
             });
-
         }
     };
 
@@ -224,6 +220,8 @@ public class SocketIoSignalConnection implements SignalConnection {
 
         @Override
         public void onError(SocketIOException socketIOException) {
+            LOGGER.error("onError on socket! " + socketIOException);
+
             if (connectFuture != null) {
                 connectFuture.setFailure(socketIOException);
             }
@@ -238,6 +236,7 @@ public class SocketIoSignalConnection implements SignalConnection {
                 return;
             }
 
+            LOGGER.warn("onState: STATE_INTERRUPTED. Scheduling reconnect for later.");
             socketIO.disconnect();
             socketIO = null;
 
@@ -280,12 +279,18 @@ public class SocketIoSignalConnection implements SignalConnection {
 
     @Override
     public void reconnect() {
+        LOGGER.debug("Reconnect called. Disconnecting then reconnecting...");
+
         disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
             @Override
             public void notify(Object sender, ObservableFuture<Void> item) {
                 if (item.isSuccess()) {
+                    LOGGER.debug("Disconnect success, now reconnecting.");
+
                     connect();
                 } else {
+                    LOGGER.warn("Disconnect failed, scheduling reconnect. " + item.getCause());
+
                     reconnectLater();
                 }
             }

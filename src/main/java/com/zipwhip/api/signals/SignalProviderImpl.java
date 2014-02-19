@@ -225,31 +225,34 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                 synchronized (SignalProviderImpl.this) {
                     pingFuture = null; // Self heal the pingFuture object
 
+                    boolean doReconnect = false;
                     if (!item.isSuccess()) {
+                        LOGGER.error("Ping task failed! Attaching failure to future and reconnecting: " + item.getCause());
                         resultFuture.setFailure(item.getCause());
+                        doReconnect = true;
                     } else {
                         if (item.getResult() != null) {
                             String payload = item.getResult();
                             try {
                                 if(Long.parseLong(payload) != pingCount) {
-                                    LOGGER.error("Pong mismatch! %s vs %s", payload, pingCount);
+                                    LOGGER.error("Pong mismatch! Reconnecting. %s vs %s", payload, pingCount);
                                     resultFuture.setFailure(new IllegalStateException(String.format("Wrong pong response (%s) for ping (%s)!", payload, pingCount)));
-
-                                    signalConnection.reconnect();
-                                    return;
+                                    doReconnect = true;
                                 } else {
                                     LOGGER.debug("Received correct pong: " + payload);
+                                    resultFuture.setSuccess(item.getResult());
                                     pingCount++;
                                 }
                             } catch (Exception e) {
-                                LOGGER.error("Error parsing server pong response! " + e);
+                                LOGGER.error("Error parsing server pong response! Reconnecting. " + e);
                                 resultFuture.setFailure(e);
-
-                                signalConnection.reconnect();
-                                return;
+                                doReconnect = true;
                             }
                         }
-                        resultFuture.setSuccess(item.getResult());
+                    }
+
+                    if (doReconnect) {
+                        signalConnection.reconnect();
                     }
                 }
             }
