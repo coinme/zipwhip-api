@@ -57,6 +57,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
     private BufferedOrderedQueue<DeliveredMessage> bufferedOrderedQueue;
     private Gson gson = SignalProviderGsonBuilder.getInstance();
     private SignalConnection signalConnection;
+    private long pingTimeoutSeconds = 15;
 
     private final Map<String, SubscriptionRequest> pendingSubscriptionRequests = new ConcurrentHashMap<String, SubscriptionRequest>();
 
@@ -106,7 +107,6 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         connectFuture = future();
         setClientId(clientId, token);
-        pingCount = 0;
 
         // The reason to use the "importantTaskExecutor" this way is so the future can be timed out.
         // If we issue a connect request and it doesn't come back for 1 minute, we need to be able to
@@ -217,7 +217,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         ObservableFuture<String> future = pingFuture = executeWithTimeout(
                 new PingTask(signalConnection, resultFuture, pingCount),
-                FutureDateUtil.in30Seconds());
+                FutureDateUtil.inFuture(pingTimeoutSeconds, TimeUnit.SECONDS));
 
         future.addObserver(new Observer<ObservableFuture<String>>() {
             @Override
@@ -252,6 +252,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                     }
 
                     if (doReconnect) {
+                        pingCount = 0;
                         signalConnection.reconnect();
                     }
                 }
