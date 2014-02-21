@@ -45,6 +45,7 @@ public class SocketIoSignalConnection implements SignalConnection {
     private volatile SocketIO socketIO;
     private volatile ObservableFuture<Void> externalConnectFuture;
     private volatile MutableObservableFuture<Void> connectFuture;
+
     private volatile int retryCount = 0;
 
     private final ObservableHelper<JsonElement> messageEvent;
@@ -231,6 +232,8 @@ public class SocketIoSignalConnection implements SignalConnection {
 
         @Override
         public void onState(int state) {
+            LOGGER.debug("onState: " + state);
+
 //            if (state != IOConnection.STATE_INTERRUPTED && state != IOConnection.STATE_INVALID) { // this caused a deadlock
             if (state != IOConnection.STATE_INTERRUPTED) {
                 return;
@@ -244,7 +247,12 @@ public class SocketIoSignalConnection implements SignalConnection {
         }
     };
 
-    private synchronized void reconnectLater() {
+    private void reconnectLater() {
+        if (externalConnectFuture != null) {
+            LOGGER.warn("Already attempting connect, not trying to reconnect.");
+            return;
+        }
+
         long retryInSeconds = retryStrategy.getNextRetryInterval(retryCount);
 
         if (LOGGER.isDebugEnabled()) {

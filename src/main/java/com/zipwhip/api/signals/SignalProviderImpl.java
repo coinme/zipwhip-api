@@ -223,13 +223,12 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             @Override
             public void notify(Object sender, ObservableFuture<String> item) {
                 synchronized (SignalProviderImpl.this) {
-                    pingFuture = null; // Self heal the pingFuture object
-
                     boolean doReconnect = false;
                     if (!item.isSuccess()) {
                         LOGGER.error("Ping task failed! Attaching failure to future and reconnecting: " + item.getCause());
-                        resultFuture.setFailure(item.getCause());
                         doReconnect = true;
+
+                        resultFuture.setFailure(item.getCause());
                     } else {
                         if (item.getResult() != null) {
                             String payload = item.getResult();
@@ -255,6 +254,8 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                         pingCount = 0;
                         signalConnection.reconnect();
                     }
+
+                    pingFuture = null; // Self heal the pingFuture object
                 }
             }
         });
@@ -989,12 +990,11 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         @Override
         public ObservableFuture<String> call() throws Exception {
             if (!connection.isConnected()) {
-                LOGGER.debug("Not connected, can't ping!");
-                return new FakeFailingObservableFuture<String>(this, new IllegalStateException("Can't ping when not connected!"));
+                LOGGER.debug("Not connected to signal server, can't ping!");
+                return new FakeFailingObservableFuture<String>(this, new IllegalStateException("Not connected to signal server, can't ping!"));
             }
 
             ObservableFuture<ObservableFuture<Object[]>> emitFuture = connection.emit("ping", payload);
-
             emitFuture.addObserver(new ObservePingAcknowledgementObserver(result));
 
             return result;
