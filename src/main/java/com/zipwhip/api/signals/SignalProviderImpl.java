@@ -57,7 +57,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
     private BufferedOrderedQueue<DeliveredMessage> bufferedOrderedQueue;
     private Gson gson = SignalProviderGsonBuilder.getInstance();
     private SignalConnection signalConnection;
-    private long pingTimeoutSeconds = 15;
+    private long pingTimeoutSeconds = 10;
 
     private final Map<String, SubscriptionRequest> pendingSubscriptionRequests = new ConcurrentHashMap<String, SubscriptionRequest>();
 
@@ -223,27 +223,32 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             @Override
             public void notify(Object sender, ObservableFuture<String> item) {
                 synchronized (SignalProviderImpl.this) {
+                    pingFuture = null; // Self heal the pingFuture object
+
                     boolean doReconnect = false;
                     if (!item.isSuccess()) {
                         LOGGER.error("Ping task failed! Attaching failure to future and reconnecting: " + item.getCause());
-                        doReconnect = true;
 
                         resultFuture.setFailure(item.getCause());
+                        doReconnect = true;
                     } else {
                         if (item.getResult() != null) {
                             String payload = item.getResult();
                             try {
                                 if(Long.parseLong(payload) != pingCount) {
                                     LOGGER.error("Pong mismatch! Reconnecting. %s vs %s", payload, pingCount);
+
                                     resultFuture.setFailure(new IllegalStateException(String.format("Wrong pong response (%s) for ping (%s)!", payload, pingCount)));
                                     doReconnect = true;
                                 } else {
                                     LOGGER.debug("Received correct pong: " + payload);
+
                                     resultFuture.setSuccess(item.getResult());
                                     pingCount++;
                                 }
                             } catch (Exception e) {
                                 LOGGER.error("Error parsing server pong response! Reconnecting. " + e);
+
                                 resultFuture.setFailure(e);
                                 doReconnect = true;
                             }
@@ -254,8 +259,6 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                         pingCount = 0;
                         signalConnection.reconnect();
                     }
-
-                    pingFuture = null; // Self heal the pingFuture object
                 }
             }
         });
@@ -989,12 +992,8 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         @Override
         public ObservableFuture<String> call() throws Exception {
-            if (!connection.isConnected()) {
-                LOGGER.debug("Not connected to signal server, can't ping!");
-                return new FakeFailingObservableFuture<String>(this, new IllegalStateException("Not connected to signal server, can't ping!"));
-            }
-
             ObservableFuture<ObservableFuture<Object[]>> emitFuture = connection.emit("ping", payload);
+
             emitFuture.addObserver(new ObservePingAcknowledgementObserver(result));
 
             return result;

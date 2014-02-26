@@ -45,7 +45,6 @@ public class SocketIoSignalConnection implements SignalConnection {
     private volatile SocketIO socketIO;
     private volatile ObservableFuture<Void> externalConnectFuture;
     private volatile MutableObservableFuture<Void> connectFuture;
-
     private volatile int retryCount = 0;
 
     private final ObservableHelper<JsonElement> messageEvent;
@@ -62,6 +61,7 @@ public class SocketIoSignalConnection implements SignalConnection {
     private Timer timer;
 
     private String url;
+    private boolean reconnectScheduled = false;
 
     public SocketIoSignalConnection() {
         exceptionEvent = new ObservableHelper<Throwable>("ExceptionEvent", eventExecutor);
@@ -102,7 +102,6 @@ public class SocketIoSignalConnection implements SignalConnection {
             return new FakeObservableFuture<Void>(this, null);
         }
 
-        retryCount = 0;
         socketIO.disconnect();
         socketIO = null;
 
@@ -139,17 +138,33 @@ public class SocketIoSignalConnection implements SignalConnection {
     private TimerTask reconnectTimerTask = new TimerTask() {
         @Override
         public void run(Timeout timeout) throws Exception {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Reconnecting.");
+            if (socketIO.isConnected()) {
+                LOGGER.debug("Was already connected, not attempting to reconnect.");
+                reconnectScheduled = false;
+
+                return;
             }
 
-            connect().addObserver(new Observer<ObservableFuture<Void>>() {
+            LOGGER.debug("Reconnect called. Disconnecting...");
+
+            disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
                 @Override
                 public void notify(Object sender, ObservableFuture<Void> item) {
-                    if (!item.isSuccess()) {
-                        LOGGER.warn("Couldn't connect, scheduling reconnect for later.");
-                        reconnectLater();
-                    }
+                    LOGGER.debug("... now connecting.");
+
+                    connect().addObserver(new Observer<ObservableFuture<Void>>() {
+                        @Override
+                        public void notify(Object sender, ObservableFuture<Void> item) {
+                            reconnectScheduled = false;
+
+                            if (item.isSuccess()) {
+                                LOGGER.debug("Successfully reconnected!");
+                            } else {
+                                LOGGER.error("Couldn't reconnect: " + item.getCause());
+                                reconnect();
+                            }
+                        }
+                    });
                 }
             });
         }
@@ -234,22 +249,22 @@ public class SocketIoSignalConnection implements SignalConnection {
         public void onState(int state) {
             LOGGER.debug("onState: " + state);
 
-//            if (state != IOConnection.STATE_INTERRUPTED && state != IOConnection.STATE_INVALID) { // this caused a deadlock
-            if (state != IOConnection.STATE_INTERRUPTED) {
+            if (state != IOConnection.STATE_INTERRUPTED && state != IOConnection.STATE_INVALID) {
                 return;
             }
 
-            LOGGER.warn("onState: STATE_INTERRUPTED. Scheduling reconnect for later.");
-            socketIO.disconnect();
-            socketIO = null;
+            LOGGER.warn("onState: STATE_INTERRUPTED or STATE_INVALID. Scheduling reconnect for later.");
+            // Warning: commented out because it created circular synchronization... i.e. deadlock.
+//            socketIO.disconnect();
+//            socketIO = null;
 
-            reconnectLater();
+            reconnect();
         }
     };
 
-    private void reconnectLater() {
-        if (externalConnectFuture != null) {
-            LOGGER.warn("Already attempting connect, not trying to reconnect.");
+    public void reconnect() {
+        if (reconnectScheduled) {
+            LOGGER.warn("Already scheduled reconnect, not scheduling another.");
             return;
         }
 
@@ -260,6 +275,7 @@ public class SocketIoSignalConnection implements SignalConnection {
         }
 
         timer.newTimeout(reconnectTimerTask, retryInSeconds, TimeUnit.SECONDS);
+        reconnectScheduled = true;
         retryCount++;
     }
 
@@ -283,26 +299,6 @@ public class SocketIoSignalConnection implements SignalConnection {
         // We have to just fake the "transmit" part of the future.
 
         return new FakeObservableFuture<ObservableFuture<Object[]>>(this, ackFuture);
-    }
-
-    @Override
-    public void reconnect() {
-        LOGGER.debug("Reconnect called. Disconnecting then reconnecting...");
-
-        disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
-            @Override
-            public void notify(Object sender, ObservableFuture<Void> item) {
-                if (item.isSuccess()) {
-                    LOGGER.debug("Disconnect success, now reconnecting.");
-
-                    connect();
-                } else {
-                    LOGGER.warn("Disconnect failed, scheduling reconnect. " + item.getCause());
-
-                    reconnectLater();
-                }
-            }
-        });
     }
 
     private static class SendWithAckTask implements Callable<ObservableFuture<Object[]>> {
