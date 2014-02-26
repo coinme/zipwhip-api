@@ -257,13 +257,41 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
                     if (doReconnect) {
                         pingCount = 0;
-                        signalConnection.reconnect();
+
+                        if (signalConnection.isConnected()) {
+                            // the connection hasn't yet detected the disconnect
+                            reconnect();
+                        } else {
+                            signalConnection.connect();
+                        }
                     }
                 }
             }
         });
 
         return future;
+    }
+
+    private void reconnect() {
+        LOGGER.debug("Reconnect called. Disconnecting...");
+
+        signalConnection.disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
+            @Override
+            public void notify(Object sender, ObservableFuture<Void> item) {
+                LOGGER.debug("... now connecting.");
+
+                signalConnection.connect().addObserver(new Observer<ObservableFuture<Void>>() {
+                    @Override
+                    public void notify(Object sender, ObservableFuture<Void> item) {
+                        if (item.isSuccess()) {
+                            LOGGER.debug("Successfully reconnected!");
+                        } else {
+                            LOGGER.error("Couldn't reconnect: " + item.getCause());
+                        }
+                    }
+                });
+            }
+        });
     }
 
     private Observer<ObservableFuture<Void>> RESET_CONNECT_FUTURE = new Observer<ObservableFuture<Void>>() {
