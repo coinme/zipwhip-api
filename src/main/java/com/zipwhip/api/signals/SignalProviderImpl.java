@@ -1073,10 +1073,12 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                 return;
             }
 
-            LOGGER.debug("Processing ping response: " + args[0]);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Processing ping response: " + args[0]);
+            }
+
             try {
                 String response = ((JsonObject) args[0]).get("data").toString();
-                LOGGER.debug("Ping response: " + response);
                 resultFuture.setSuccess(response);
             } catch (Exception e) {
                 resultFuture.setFailure(e);
