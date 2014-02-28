@@ -47,13 +47,13 @@
         <dependency>
             <groupId>com.zipwhip</groupId>
             <artifactId>signals-api</artifactId>
-            <version>1.0.5-SNAPSHOT</version>
+            <version>1.0.7-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.zipwhip</groupId>
             <artifactId>zipwhip-common-util</artifactId>
-            <version>1.63.6-SNAPSHOT</version>
+            <version>1.63.7-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.zipwhip</groupId>
