@@ -48,12 +48,25 @@
             <groupId>com.zipwhip</groupId>
             <artifactId>zipwhip-common-util</artifactId>
             <version>1.63.1-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>libphonenumber</artifactId>
+                    <groupId>com.googlecode.libphonenumber</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20090211</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>6.0</version>
+        </dependency>
+
         <dependency>
             <groupId>com.ning</groupId>
             <artifactId>async-http-client</artifactId>
