@@ -5,10 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.zipwhip.api.signals.dto.json.SignalProviderGsonBuilder;
-import com.zipwhip.concurrent.DefaultObservableFuture;
-import com.zipwhip.concurrent.FakeObservableFuture;
-import com.zipwhip.concurrent.MutableObservableFuture;
-import com.zipwhip.concurrent.ObservableFuture;
+import com.zipwhip.concurrent.*;
 import com.zipwhip.events.Observable;
 import com.zipwhip.events.ObservableHelper;
 import com.zipwhip.events.Observer;
@@ -89,6 +86,7 @@ public class SocketIoSignalConnection implements SignalConnection {
 
                     connectFuture = null;
                     externalConnectFuture = null;
+                    reconnectScheduled = false;
                 }
             }
         });
@@ -142,6 +140,11 @@ public class SocketIoSignalConnection implements SignalConnection {
                 LOGGER.debug("Was already connected, not attempting to reconnect.");
                 reconnectScheduled = false;
 
+                return;
+            }
+
+            if (connectFuture != null) {
+                LOGGER.debug("Reconnect called, but there's an existing connectFuture. Aborting reconnect.");
                 return;
             }
 
@@ -317,6 +320,10 @@ public class SocketIoSignalConnection implements SignalConnection {
 
         @Override
         public ObservableFuture<Object[]> call() throws Exception {
+            if (socketIO == null) {
+                return new FakeFailingObservableFuture<Object[]>(this, new IllegalStateException("socketIO was null!"));
+            }
+
             final MutableObservableFuture<Object[]> result = new DefaultObservableFuture<Object[]>(this, eventExecutor);
             socketIO.emit(event, new IOAcknowledge() {
                 @Override

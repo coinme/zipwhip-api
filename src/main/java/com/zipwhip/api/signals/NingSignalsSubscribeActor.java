@@ -136,7 +136,7 @@ public class NingSignalsSubscribeActor implements SignalsSubscribeActor {
 
             if (future.isDone()) {
                 try {
-                    result.setSuccess(future.get(5, TimeUnit.MINUTES));
+                    result.setSuccess(future.get(5000, TimeUnit.SECONDS));
                 } catch (InterruptedException e) {
                     result.setFailure(e);
                 } catch (ExecutionException e) {
