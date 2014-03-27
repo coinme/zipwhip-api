@@ -260,7 +260,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
                         if (signalConnection.isConnected()) {
                             // the connection hasn't yet detected the disconnect
-                            reconnect();
+                            forceDisconnectAndReconnect();
                         } else {
                             signalConnection.connect();
                         }
@@ -272,7 +272,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         return future;
     }
 
-    private void reconnect() {
+    private void forceDisconnectAndReconnect() {
         LOGGER.debug("Reconnect called. Disconnecting...");
 
         signalConnection.disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
@@ -352,7 +352,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             future.addObserver(new DisconnectOnFailureObserver(future));
         }
 
-        // Self heal the bindFuture object
+        // When this future is successful, we need to save the details
         future.addObserver(new Observer<ObservableFuture<BindResult>>() {
             @Override
             public void notify(Object sender, ObservableFuture<BindResult> item) {
@@ -365,18 +365,11 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                         return;
                     }
 
+                    // Self heal the bindFuture object
                     bindFuture = null;
-                }
-            }
-        });
 
-        // When this future is successful, we need to save the details
-        future.addObserver(new Observer<ObservableFuture<BindResult>>() {
-            @Override
-            public void notify(Object sender, ObservableFuture<BindResult> item) {
-                synchronized (SignalProviderImpl.this) {
                     if (!item.isSuccess()) {
-                        LOGGER.error("Couldn't bind! " + item.getCause());
+                        LOGGER.error("Bind not successful! " + item.getCause());
                         return;
                     }
 
@@ -798,26 +791,6 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                             @Override
                             public void notify(Object sender, ObservableFuture<BindResult> item) {
                                 synchronized (SignalProviderImpl.this) {
-//                                    if (_bindFuture != bindFuture) {
-//                                        LOGGER.error(String.format("Not the same bindRequest object. So quitting. %s/%s", _bindFuture, bindFuture));
-//                                        return;
-//                                    }
-                                    if (item.isFailed()) {
-                                        LOGGER.error("Bind future not successful!", item.getCause());
-                                        if (resultFuture != null) {
-                                            resultFuture.setFailure(new Exception("The bindFuture was not successful", item.getCause()));
-                                        }
-
-                                        return;
-                                    } else if (item.isCancelled()) {
-                                        LOGGER.error("Bind future cancelled! " + item);
-                                        if (resultFuture != null) {
-                                            resultFuture.cancel();
-                                        }
-
-                                        return;
-                                    }
-
                                     if (item.isFailed()) {
                                         LOGGER.error("Bind future not successful!", item.getCause());
                                         if (resultFuture != null) {
@@ -871,15 +844,12 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                 }
 
                 if (bindFuture != item) {
-                    LOGGER.warn(String.format("The bindFuture were not equal. Did we just prevent a bug? %s/%s", bindFuture, SignalProviderImpl.this.bindFuture));
+                    LOGGER.warn(String.format("The bindFutures were not equal. Did we just prevent a bug? %s/%s", bindFuture, SignalProviderImpl.this.bindFuture));
                     return;
                 }
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Reconnecting the connection because the future failed.");
-                }
-
-                signalConnection.reconnect();
+                LOGGER.debug("Reconnecting because the bind future failed.");
+                forceDisconnectAndReconnect();
             }
         }
     }
