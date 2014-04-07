@@ -136,6 +136,12 @@ public class SocketIoSignalConnection implements SignalConnection {
     private TimerTask reconnectTimerTask = new TimerTask() {
         @Override
         public void run(Timeout timeout) throws Exception {
+            if (socketIO == null) {
+                LOGGER.error("SocketIO was null, not attempting to reconnect.");
+                reconnectScheduled = false;
+                return;
+            }
+
             if (socketIO.isConnected()) {
                 LOGGER.debug("Was already connected, not attempting to reconnect.");
                 reconnectScheduled = false;
