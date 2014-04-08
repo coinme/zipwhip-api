@@ -39,9 +39,7 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
 
     public ImportantTaskExecutor(Scheduler scheduler) {
         if (scheduler == null){
-            TimerScheduler scheduler1 = new TimerScheduler((String)null);
-            this.setScheduler(scheduler1);
-            this.link(scheduler1);
+            this.setScheduler(this.link(new TimerScheduler("AutoCreatedImportantTaskExecutorScheduler")));
         } else {
             this.setScheduler(scheduler);
         }
