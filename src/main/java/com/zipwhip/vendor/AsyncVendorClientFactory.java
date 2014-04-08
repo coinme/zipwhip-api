@@ -74,7 +74,7 @@ public class AsyncVendorClientFactory implements Factory<AsyncVendorClient> {
      * @return An authenticated AsyncVendorClient.
      */
     @Override
-    public AsyncVendorClient create() {
+    public AsyncVendorClient create() throws Exception {
         return new DefaultAsyncVendorClient(connectionFactory.create());
     }
 

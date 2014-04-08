@@ -19,7 +19,7 @@ public class SignalProviderFactory implements Factory<SignalProvider> {
     private SignalsSubscribeActor signalsSubscribeActor;
 
     @Override
-    public SignalProvider create() {
+    public SignalProvider create() throws Exception {
         SignalProviderImpl signalProvider = new SignalProviderImpl();
 
         signalProvider.setImportantTaskExecutor(importantTaskExecutor);
