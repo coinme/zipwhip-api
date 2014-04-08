@@ -225,6 +225,13 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                 synchronized (SignalProviderImpl.this) {
                     pingFuture = null; // Self heal the pingFuture object
 
+                    if (item.isCancelled()) {
+                        LOGGER.warn("PingFuture was cancelled, not reconnecting.");
+                        resultFuture.cancel();
+
+                        return;
+                    }
+
                     boolean doReconnect = false;
                     if (!item.isSuccess()) {
                         LOGGER.error("Ping task failed! Attaching failure to future and reconnecting: " + item.getCause());
@@ -274,6 +281,12 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
     private void forceDisconnectAndReconnect() {
         LOGGER.debug("Reconnect called. Disconnecting...");
+
+        if (pingFuture != null) {
+            LOGGER.debug("Cancelling existing pingFuture, as we're now reconnecting.");
+
+            clearPingFuture();
+        }
 
         signalConnection.disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
             @Override
@@ -770,6 +783,13 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         @Override
         public ObservableFuture<Void> call() throws Exception {
+
+            if (pingFuture != null) {
+                LOGGER.debug("Cancelling existing pingFuture, as we're now connecting.");
+
+                clearPingFuture();
+            }
+
             ObservableFuture<Void> connectFuture = signalConnection.connect();
 
             connectFuture.addObserver(new Observer<ObservableFuture<Void>>() {
@@ -822,6 +842,11 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
             return resultFuture;
         }
+    }
+
+    private void clearPingFuture() {
+        pingFuture.cancel();
+        pingFuture = null;
     }
 
     private class ReconnectOnFailureObserver implements Observer<ObservableFuture<BindResult>> {
