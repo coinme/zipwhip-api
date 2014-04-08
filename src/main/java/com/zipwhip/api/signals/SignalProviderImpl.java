@@ -428,13 +428,16 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
     public final Observer<DeliveredMessage> releaseMessageObserver = new Observer<DeliveredMessage>() {
         @Override
         public void notify(Object sender, DeliveredMessage message) {
-
             // first check for system commands
             if (StringUtil.equalsIgnoreCase(message.getType(), "subscribe")) {
                 handleSubscribeCommand(message);
             } else if (StringUtil.equalsIgnoreCase(message.getType(), "presence")) {
                 presenceChangedEvent.notifyObservers(this, message);
             } else {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(String.format("Fire signalReceivedEvent.notifyObservers(this, message) %s", message));
+                }
+
                 signalReceivedEvent.notifyObservers(this, message);
             }
         }
