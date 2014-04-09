@@ -219,11 +219,19 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                 new PingTask(signalConnection, resultFuture, pingCount),
                 FutureDateUtil.inFuture(pingTimeoutSeconds, TimeUnit.SECONDS));
 
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Created pingFuture.");
+        }
+
         future.addObserver(new Observer<ObservableFuture<String>>() {
             @Override
             public void notify(Object sender, ObservableFuture<String> item) {
                 synchronized (SignalProviderImpl.this) {
                     pingFuture = null; // Self heal the pingFuture object
+
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Destroyed pingFuture.");
+                    }
 
                     if (item.isCancelled()) {
                         LOGGER.warn("PingFuture was cancelled, not reconnecting.");
@@ -383,6 +391,15 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
                     if (!item.isSuccess()) {
                         LOGGER.error("Bind not successful! " + item.getCause());
+
+                        if (pingFuture != null) {
+                            if (LOGGER.isDebugEnabled()) {
+                                LOGGER.debug("Clearing existing pingFuture.");
+                            }
+
+                            clearPingFuture();
+                        }
+
                         return;
                     }
 
@@ -786,7 +803,6 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         @Override
         public ObservableFuture<Void> call() throws Exception {
-
             if (pingFuture != null) {
                 LOGGER.debug("Cancelling existing pingFuture, as we're now connecting.");
 
