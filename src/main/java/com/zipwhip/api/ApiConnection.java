@@ -72,7 +72,7 @@ public interface ApiConnection extends Connection {
      */
     public static final int PORT_8080 = 8080;
 
-    public static final int DEFAULT_SIGNALS_PORT = PORT_443;
+    public static final int DEFAULT_SIGNALS_PORT = PORT_80;
 
     /**
      * The default Zipwhip API version
