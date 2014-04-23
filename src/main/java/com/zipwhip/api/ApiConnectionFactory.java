@@ -41,53 +41,44 @@ public abstract class ApiConnectionFactory implements Factory<ApiConnection> {
      * @return Connection an authenticated Connection
      */
     @Override
-    public ApiConnection create() {
+    public ApiConnection create() throws Exception {
+        ApiConnection connection = createInstance();
 
-        try {
-            ApiConnection connection = createInstance();
+        connection.setSessionKey(sessionKey);
+        connection.setApiVersion(apiVersion);
+        connection.setHost(host);
 
-            connection.setSessionKey(sessionKey);
-            connection.setApiVersion(apiVersion);
-            connection.setHost(host);
-
-            if (StringUtil.exists(apiKey) && StringUtil.exists(secret)) {
-                connection.setAuthenticator(new SignTool(apiKey, secret));
-            }
-
-            // We have a username/password
-            if (StringUtil.exists(username) && StringUtil.exists(password)) {
-
-                Map<String, Object> params = new HashMap<String, Object>();
-                params.put("mobileNumber", username);
-                params.put("password", password);
-
-                ObservableFuture<String> future = connection.send("user/login", params);
-
-                future.awaitUninterruptibly();
-
-                if (!future.isSuccess()) {
-                    throw new RuntimeException("Cannot create connection, login rejected");
-                }
-
-                ServerResponse serverResponse = responseParser.parse(future.getResult());
-
-                if (!serverResponse.isSuccess()) {
-                    throw new RuntimeException("Error authenticating client");
-                }
-
-                if (serverResponse instanceof StringServerResponse) {
-                    connection.setSessionKey(((StringServerResponse) serverResponse).response);
-                }
-            }
-
-            return connection;
-
-        } catch (Exception e) {
-
-            LOGGER.error("Error creating Connection", e);
-
-            return null;
+        if (StringUtil.exists(apiKey) && StringUtil.exists(secret)) {
+            connection.setAuthenticator(new SignTool(apiKey, secret));
         }
+
+        // We have a username/password
+        if (StringUtil.exists(username) && StringUtil.exists(password)) {
+            Map<String, Object> params = new HashMap<String, Object>();
+
+            params.put("mobileNumber", username);
+            params.put("password", password);
+
+            ObservableFuture<String> future = connection.send("user/login", params);
+
+            future.awaitUninterruptibly();
+
+            if (!future.isSuccess()) {
+                throw new Exception("Cannot create connection, login rejected");
+            }
+
+            ServerResponse serverResponse = responseParser.parse(future.getResult());
+
+            if (!serverResponse.isSuccess()) {
+                throw new Exception("Error authenticating client");
+            }
+
+            if (serverResponse instanceof StringServerResponse) {
+                connection.setSessionKey(((StringServerResponse) serverResponse).response);
+            }
+        }
+
+        return connection;
     }
 
     protected abstract ApiConnection createInstance();

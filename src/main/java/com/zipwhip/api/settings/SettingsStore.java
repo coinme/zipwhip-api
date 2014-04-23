@@ -16,6 +16,7 @@ public interface SettingsStore extends KeyValueStore<SettingsStore.Keys, String>
     public enum Keys {
         SESSION_KEY,
         CLIENT_ID,
+        CLIENT_ID_TOKEN,
         USERNAME,
         VERSIONS,
         EXPECTS_SUBSCRIPTION_COMPLETE,

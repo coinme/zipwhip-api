@@ -15,12 +15,12 @@ import com.zipwhip.signals2.presence.UserAgent;
 public class MockSignalSubscribeActor implements SignalsSubscribeActor {
 
     @Override
-    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String subscriptionId, UserAgent presence) {
+    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String subscriptionId) {
         return new DefaultObservableFuture<Void>(this, SimpleExecutor.getInstance());
     }
 
     @Override
-    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String scope, String subscriptionId, UserAgent userAgent) {
+    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String scope, String subscriptionId) {
         return new DefaultObservableFuture<Void>(this, SimpleExecutor.getInstance());
     }
 

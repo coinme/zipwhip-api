@@ -247,9 +247,12 @@ public class SocketIoSignalConnection implements SignalConnection {
         public void onError(SocketIOException socketIOException) {
             LOGGER.error("onError on socket! " + socketIOException);
 
-            if (connectFuture != null) {
-                connectFuture.setFailure(socketIOException);
-            }
+            // The onError happens for a lot of reasons, including emit failure.
+            // On a handshake error (initial connect) the socketIO library also calls onState()
+            // If we disconnect due to a connection error, it also calls onState()
+//            if (connectFuture != null) {
+//                connectFuture.setFailure(socketIOException);
+//            }
 
             exceptionEvent.notifyObservers(SocketIoSignalConnection.this, socketIOException);
         }
@@ -266,8 +269,31 @@ public class SocketIoSignalConnection implements SignalConnection {
             // Warning: commented out because it created circular synchronization... i.e. deadlock.
 //            socketIO.disconnect();
 //            socketIO = null;
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Synchronizing on (this)");
+            }
 
-            reconnect();
+            synchronized (this) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Done synchronizing on (this)");
+                }
+
+                if (connectFuture == null) {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("The connectFuture was null. We will now try to reconnect.");
+                    }
+
+                    reconnect();
+                } else {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("The connectFuture was not null. We are already trying to connect, so this disconnect will be ignored (first connect is not retried)");
+                    }
+
+                    if (connectFuture != null) {
+                        connectFuture.setFailure(new Exception("State changed to " + state));
+                    }
+                }
+            }
         }
     };
 

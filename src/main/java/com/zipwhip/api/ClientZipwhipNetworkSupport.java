@@ -28,7 +28,6 @@ public abstract class ClientZipwhipNetworkSupport extends ZipwhipNetworkSupport 
     protected long signalsConnectTimeoutInSeconds = 10;
 
     protected SignalProvider signalProvider;
-    protected SettingsStore settingsStore;
 
     /**
      *
@@ -38,7 +37,7 @@ public abstract class ClientZipwhipNetworkSupport extends ZipwhipNetworkSupport 
      * @param connection For talking with Zipwhip (message/send)
      * @param signalProvider For signal i/o
      */
-    public ClientZipwhipNetworkSupport(SettingsStore store, Executor executor, ImportantTaskExecutor importantTaskExecutor, ApiConnection connection, SignalProvider signalProvider) {
+    public ClientZipwhipNetworkSupport(Executor executor, ImportantTaskExecutor importantTaskExecutor, ApiConnection connection, SignalProvider signalProvider) {
         super(executor, connection);
 
         if (signalProvider != null) {
@@ -50,21 +49,8 @@ public abstract class ClientZipwhipNetworkSupport extends ZipwhipNetworkSupport 
             importantTaskExecutor = new ImportantTaskExecutor();
             this.link(importantTaskExecutor);
         }
+
         this.importantTaskExecutor = importantTaskExecutor;
-
-        if (store == null) {
-            store = new PreferencesSettingsStore();
-        }
-
-        this.setSettingsStore(store);
-    }
-
-    public SettingsStore getSettingsStore() {
-        return settingsStore;
-    }
-
-    public void setSettingsStore(SettingsStore store) {
-        this.settingsStore = store;
     }
 
     public SignalProvider getSignalProvider() {
@@ -83,18 +69,17 @@ public abstract class ClientZipwhipNetworkSupport extends ZipwhipNetworkSupport 
         this.signalsConnectTimeoutInSeconds = signalsConnectTimeoutInSeconds;
     }
 
-    private synchronized void onSubscriptionComplete(String clientId) {
-        accessSettings();
+//    private synchronized void onSubscriptionComplete(String clientId) {
+//        accessSettings();
+//
+//        settingsStore.put(SettingsStore.Keys.CLIENT_ID, clientId);
+//        settingsStore.put(SettingsStore.Keys.EXPECTS_SUBSCRIPTION_COMPLETE, "false");
+//        settingsStore.put(SettingsStore.Keys.LAST_SUBSCRIBED_CLIENT_ID, clientId);
+//    }
 
-        settingsStore.put(SettingsStore.Keys.CLIENT_ID, clientId);
-        settingsStore.put(SettingsStore.Keys.EXPECTS_SUBSCRIPTION_COMPLETE, "false");
-        settingsStore.put(SettingsStore.Keys.LAST_SUBSCRIBED_CLIENT_ID, clientId);
-    }
-
-    private void accessSettings() {
-        ensureLock(ClientZipwhipNetworkSupport.this);
-        ensureLock(signalProvider);
-        ensureLock(settingsStore);
-    }
-
+//    private void accessSettings() {
+//        ensureLock(ClientZipwhipNetworkSupport.this);
+//        ensureLock(signalProvider);
+//        ensureLock(settingsStore);
+//    }
 }

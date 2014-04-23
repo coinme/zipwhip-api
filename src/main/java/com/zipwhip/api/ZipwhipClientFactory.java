@@ -1,6 +1,5 @@
 package com.zipwhip.api;
 
-import com.zipwhip.api.settings.SettingsStore;
 import com.zipwhip.api.signals.SignalProvider;
 import com.zipwhip.executors.CommonExecutorFactory;
 import com.zipwhip.important.ImportantTaskExecutor;
@@ -15,21 +14,19 @@ public class ZipwhipClientFactory implements Factory<ZipwhipClient> {
     private Factory<SignalProvider> signalProviderFactory;
     private ImportantTaskExecutor importantTaskExecutor;
     private CommonExecutorFactory executorFactory;
-    private SettingsStore settingsStore;
 
     public ZipwhipClientFactory() {
         this(null, null);
     }
 
     public ZipwhipClientFactory(ApiConnectionFactory connectionFactory, Factory<SignalProvider> signalProviderFactory) {
-        this(connectionFactory, signalProviderFactory, null, null, null);
+        this(connectionFactory, signalProviderFactory, null, null);
     }
 
-    public ZipwhipClientFactory(ApiConnectionFactory connectionFactory, Factory<SignalProvider> signalProviderFactory, ImportantTaskExecutor importantTaskExecutor, SettingsStore settingsStore, CommonExecutorFactory executorFactory) {
+    public ZipwhipClientFactory(ApiConnectionFactory connectionFactory, Factory<SignalProvider> signalProviderFactory, ImportantTaskExecutor importantTaskExecutor, CommonExecutorFactory executorFactory) {
         this.connectionFactory = connectionFactory;
         this.signalProviderFactory = signalProviderFactory;
         this.importantTaskExecutor = importantTaskExecutor;
-        this.settingsStore = settingsStore;
         this.executorFactory = executorFactory;
 
         if (this.importantTaskExecutor == null){
@@ -125,7 +122,7 @@ public class ZipwhipClientFactory implements Factory<ZipwhipClient> {
      */
     @Override
     public ZipwhipClient create() throws Exception {
-        return new DefaultZipwhipClient(settingsStore, executorFactory == null ? null : executorFactory.create(), importantTaskExecutor, connectionFactory.create(), signalProviderFactory == null ? null : signalProviderFactory.create());
+        return new DefaultZipwhipClient(executorFactory == null ? null : executorFactory.create(), importantTaskExecutor, connectionFactory.create(), signalProviderFactory == null ? null : signalProviderFactory.create());
     }
 
 }

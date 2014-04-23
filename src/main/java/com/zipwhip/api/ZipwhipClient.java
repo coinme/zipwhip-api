@@ -666,19 +666,19 @@ public interface ZipwhipClient extends Destroyable {
      */
     void setSignalProvider(SignalProvider provider);
 
-    /**
-     * Get the setting settingsStore
-     *
-     * @return the setting settingsStore
-     */
-    SettingsStore getSettingsStore();
-
-    /**
-     * Set the setting settingsStore
-     *
-     * @param store the setting settingsStore
-     */
-    void setSettingsStore(SettingsStore store);
+//    /**
+//     * Get the setting settingsStore
+//     *
+//     * @return the setting settingsStore
+//     */
+//    SettingsStore getSettingsStore();
+//
+//    /**
+//     * Set the setting settingsStore
+//     *
+//     * @param store the setting settingsStore
+//     */
+//    void setSettingsStore(SettingsStore store);
 
     /**
      * Query Group image by address.

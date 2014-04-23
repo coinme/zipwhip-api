@@ -7,7 +7,6 @@ import com.zipwhip.concurrent.DefaultObservableFuture;
 import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.executors.SimpleExecutor;
-import com.zipwhip.signals2.presence.UserAgent;
 import com.zipwhip.util.StringUtil;
 import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
@@ -58,12 +57,12 @@ public class NingSignalsSubscribeActor implements SignalsSubscribeActor {
     }
 
     @Override
-    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String subscriptionId, UserAgent userAgent) {
-        return subscribe(clientId,  sessionKey, null, subscriptionId, userAgent);
+    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String subscriptionId) {
+        return subscribe(clientId,  sessionKey, null, subscriptionId);
     }
 
     @Override
-    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String scope, String subscriptionId, UserAgent userAgent) {
+    public ObservableFuture<Void> subscribe(String clientId, String sessionKey, String scope, String subscriptionId) {
         AsyncHttpClient.BoundRequestBuilder builder = client.preparePost(url);
 
         applyParameters(builder, clientId, sessionKey, subscriptionId, scope);

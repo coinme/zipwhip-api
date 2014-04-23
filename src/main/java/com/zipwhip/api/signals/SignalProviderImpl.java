@@ -707,7 +707,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             }
 
             // Make the call to the server (async).
-            ObservableFuture<Void> future = signalsSubscribeActor.subscribe(getClientId(), sessionKey, scope, subscriptionId, getUserAgent());
+            ObservableFuture<Void> future = signalsSubscribeActor.subscribe(getClientId(), sessionKey, scope, subscriptionId);
 
             // We ONLY want to cascade the failure.
             // The success will come later when the SubscriptionCompleteCommand comes in.
@@ -855,7 +855,9 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                         });
                     }
 
-                    connectionChangedEvent.notifyObservers(SignalProviderImpl.this, null);
+                    // I removed this because the connectionChangedEvent was firing twice.
+                    // Once from us, and once from the underlying library
+//                    connectionChangedEvent.notifyObservers(SignalProviderImpl.this, null);
                 }
             });
 

@@ -4,7 +4,6 @@ import com.zipwhip.api.dto.*;
 import com.zipwhip.api.response.BooleanServerResponse;
 import com.zipwhip.api.response.ServerResponse;
 import com.zipwhip.api.response.StringServerResponse;
-import com.zipwhip.api.settings.SettingsStore;
 import com.zipwhip.api.signals.SignalProvider;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.important.ImportantTaskExecutor;
@@ -38,7 +37,7 @@ public class DefaultZipwhipClient extends ClientZipwhipNetworkSupport implements
      * @param connection The connection to Zipwhip API
      */
     public DefaultZipwhipClient(ApiConnection connection) {
-        this(null, null, null, connection, null);
+        this(null, null, connection, null);
     }
 
     /**
@@ -48,8 +47,8 @@ public class DefaultZipwhipClient extends ClientZipwhipNetworkSupport implements
      * @param signalProvider The connection client for Zipwhip SignalServer.
      * @param executor       The executor that's used for asynchronous event processing (including ApiConnection.send() and signalProvider.onXXXXX()).
      */
-    public DefaultZipwhipClient(SettingsStore store, Executor executor, ImportantTaskExecutor importantTaskExecutor, ApiConnection connection, SignalProvider signalProvider) {
-        super(store, executor, importantTaskExecutor, connection, signalProvider);
+    public DefaultZipwhipClient(Executor executor, ImportantTaskExecutor importantTaskExecutor, ApiConnection connection, SignalProvider signalProvider) {
+        super(executor, importantTaskExecutor, connection, signalProvider);
     }
 
     @Override

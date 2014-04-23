@@ -30,7 +30,6 @@ public class AsyncVendorClientFactory implements Factory<AsyncVendorClient> {
      * @throws Exception if an error occurs creating or authenticating the client.
      */
     public static AsyncVendorClient createViaApiKey(String apiKey, String secret) throws Exception {
-
         ApiConnectionFactory connectionFactory = new NingApiConnectionFactory();
 
         connectionFactory.setHost(ApiConnectionConfiguration.SIGNALS_HOST);
@@ -55,7 +54,6 @@ public class AsyncVendorClientFactory implements Factory<AsyncVendorClient> {
      * @throws Exception if an error occurs creating or authenticating the client.
      */
     public static AsyncVendorClient createViaApiKey(String apiKey, String secret, String host) throws Exception {
-
         ApiConnectionFactory connectionFactory = new NingApiConnectionFactory();
 
         connectionFactory.setHost(host);

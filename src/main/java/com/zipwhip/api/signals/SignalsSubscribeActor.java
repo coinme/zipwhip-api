@@ -14,11 +14,12 @@ import com.zipwhip.signals2.presence.UserAgent;
  */
 public interface SignalsSubscribeActor {
 
-    ObservableFuture<Void> subscribe(String clientId, String sessionKey, String subscriptionId, UserAgent presence);
+    ObservableFuture<Void> subscribe(String clientId, String sessionKey, String subscriptionId);
 
-    ObservableFuture<Void> subscribe(String clientId, String sessionKey, String scope, String subscriptionId, UserAgent userAgent);
+    ObservableFuture<Void> subscribe(String clientId, String sessionKey, String scope, String subscriptionId);
 
     ObservableFuture<Void> unsubscribe(String clientId, String sessionKey, String scope, String subscriptionId);
 
     ObservableFuture<Void> unsubscribe(String clientId, String sessionKey, String subscriptionId);
+
 }
