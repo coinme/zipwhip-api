@@ -13,7 +13,7 @@ import com.zipwhip.executors.SimpleExecutor;
 import com.zipwhip.gson.GsonUtil;
 import com.zipwhip.important.ImportantTaskExecutor;
 import com.zipwhip.reliable.retry.RetryStrategy;
-import com.zipwhip.signals2.SignalServerException;
+import com.zipwhip.signals2.SignalServerEvent;
 import com.zipwhip.timers.Timeout;
 import com.zipwhip.timers.Timer;
 import com.zipwhip.timers.TimerTask;
@@ -45,6 +45,7 @@ public class SocketIoSignalConnection implements SignalConnection {
     private volatile int retryCount = 0;
 
     private final ObservableHelper<JsonElement> messageEvent;
+    private final ObservableHelper<SignalServerEvent> serverEvent;
     private final ObservableHelper<Void> disconnectEvent;
     private final ObservableHelper<Void> connectEvent;
     private final ObservableHelper<Throwable> exceptionEvent;
@@ -65,6 +66,7 @@ public class SocketIoSignalConnection implements SignalConnection {
         connectEvent = new ObservableHelper<Void>("ConnectEvent", eventExecutor);
         disconnectEvent = new ObservableHelper<Void>("DisconnectEvent", eventExecutor);
         messageEvent = new ObservableHelper<JsonElement>("JsonMessageEvent", eventExecutor);
+        serverEvent = new ObservableHelper<SignalServerEvent>("ServerEvent", eventExecutor);
     }
 
     @Override
@@ -229,11 +231,12 @@ public class SocketIoSignalConnection implements SignalConnection {
                     for (Object arg : args) {
                         JsonObject object = (JsonObject) arg;
 
-                        SignalServerException exception = new SignalServerException(
-                                GsonUtil.getInt(object.get("code")),
-                                GsonUtil.getString(object.get("message")));
+                        SignalServerEvent signalServerEvent =
+                                new SignalServerEvent(
+                                        GsonUtil.getInt(object.get("code")),
+                                        GsonUtil.getString(object.get("message")));
 
-                        exceptionEvent.notifyObservers(SocketIoSignalConnection.this, exception);
+                        serverEvent.notifyObservers(SocketIoSignalConnection.this, signalServerEvent);
                     }
                 }
             } finally {
@@ -271,7 +274,7 @@ public class SocketIoSignalConnection implements SignalConnection {
         }
     };
 
-    public void reconnect() {
+    public synchronized void reconnect() {
         if (reconnectScheduled) {
             LOGGER.warn("Already scheduled reconnect, not scheduling another.");
             return;
@@ -306,7 +309,6 @@ public class SocketIoSignalConnection implements SignalConnection {
 
         // the underlying library doesn't tell us when transmission is successful.
         // We have to just fake the "transmit" part of the future.
-
         return new FakeObservableFuture<ObservableFuture<Object[]>>(this, ackFuture);
     }
 
@@ -397,7 +399,8 @@ public class SocketIoSignalConnection implements SignalConnection {
     }
 
     @Override
-    public Observable<JsonElement> getMessageEvent() {
-        return messageEvent;
-    }
+    public Observable<JsonElement> getMessageEvent() { return messageEvent; }
+
+    @Override
+    public ObservableHelper<SignalServerEvent> getServerEvent() { return serverEvent; }
 }
