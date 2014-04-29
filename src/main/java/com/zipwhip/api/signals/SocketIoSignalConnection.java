@@ -12,6 +12,7 @@ import com.zipwhip.events.Observer;
 import com.zipwhip.executors.SimpleExecutor;
 import com.zipwhip.gson.GsonUtil;
 import com.zipwhip.important.ImportantTaskExecutor;
+import com.zipwhip.lifecycle.CascadingDestroyableBase;
 import com.zipwhip.reliable.retry.RetryStrategy;
 import com.zipwhip.signals2.SignalServerEvent;
 import com.zipwhip.timers.Timeout;
@@ -35,14 +36,14 @@ import java.util.concurrent.TimeUnit;
  * @author Michael
  * @version 1
  */
-public class SocketIoSignalConnection implements SignalConnection {
+public class SocketIoSignalConnection extends CascadingDestroyableBase implements SignalConnection {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SocketIoSignalConnection.class);
 
-    private volatile SocketIO socketIO;
-    private volatile ObservableFuture<Void> externalConnectFuture;
-    private volatile MutableObservableFuture<Void> connectFuture;
-    private volatile int retryCount = 0;
+    private volatile SocketIO __unsafe_socketIO;
+    private volatile ObservableFuture<Void> __unsafe_externalConnectFuture;
+    private volatile MutableObservableFuture<Void> __unsafe_connectFuture;
+    private volatile int __unsafe_retryCount = 0;
 
     private final ObservableHelper<JsonElement> messageEvent;
     private final ObservableHelper<SignalServerEvent> serverEvent;
@@ -59,7 +60,7 @@ public class SocketIoSignalConnection implements SignalConnection {
     private Timer timer;
 
     private String url;
-    private boolean reconnectScheduled = false;
+    private volatile boolean __unsafe_reconnectScheduled = false;
 
     public SocketIoSignalConnection() {
         exceptionEvent = new ObservableHelper<Throwable>("ExceptionEvent", eventExecutor);
@@ -71,24 +72,30 @@ public class SocketIoSignalConnection implements SignalConnection {
 
     @Override
     public synchronized ObservableFuture<Void> connect() {
-        if (externalConnectFuture != null) {
+        final ObservableFuture<Void> finalExternalConnectFuture = finalObject(__unsafe_externalConnectFuture);
+
+        if (finalExternalConnectFuture != null) {
             LOGGER.debug("Tried to connect but already had connect future. Returning that instead.");
-            return externalConnectFuture;
+            return finalExternalConnectFuture;
         }
 
-        final ObservableFuture<Void> result = externalConnectFuture = importantTaskExecutor.enqueue(executor, new ConnectTask(), FutureDateUtil.in30Seconds());
+        final MutableObservableFuture<Void> finalConnectFuture = setConnectFuture(new DefaultObservableFuture<Void>(this, eventExecutor));
+
+        final ObservableFuture<Void> result = __unsafe_externalConnectFuture = importantTaskExecutor.enqueue(executor, new ConnectTask(finalConnectFuture), FutureDateUtil.in30Seconds());
 
         result.addObserver(new Observer<ObservableFuture<Void>>() {
             @Override
             public void notify(Object sender, ObservableFuture<Void> item) {
+                // This is run in "this.eventExecutor" thread pool
                 synchronized (SocketIoSignalConnection.this) {
                     if (item.isSuccess()) {
-                        retryCount = 0;
+                        setRetryCount(0);
                     }
 
-                    connectFuture = null;
-                    externalConnectFuture = null;
-                    reconnectScheduled = false;
+                    clearConnectFutureIf(finalConnectFuture);
+                    setReconnectScheduled(false);
+                    // We don't need to do a "clearIf" pattern here, since we're the only one that changes it.
+                    __unsafe_externalConnectFuture = null;
                 }
             }
         });
@@ -98,12 +105,16 @@ public class SocketIoSignalConnection implements SignalConnection {
 
     @Override
     public synchronized ObservableFuture<Void> disconnect() {
-        if (socketIO == null) {
+        final SocketIO finalSocketIO = finalObject(__unsafe_socketIO);
+
+        if (finalSocketIO == null) {
             return new FakeObservableFuture<Void>(this, null);
         }
 
-        socketIO.disconnect();
-        socketIO = null;
+        finalSocketIO.disconnect();
+        // This isn't safe. We know what we're doing...
+        // Setting it null because we own it.
+        __unsafe_socketIO = null;
 
         return new FakeObservableFuture<Void>(this, null);
     }
@@ -116,17 +127,32 @@ public class SocketIoSignalConnection implements SignalConnection {
         this.timer = timer;
     }
 
+    @Override
+    protected void onDestroy() {
+
+    }
+
     private class ConnectTask implements Callable<ObservableFuture<Void>> {
+
+        private final MutableObservableFuture<Void> connectFuture;
+
+        private ConnectTask(MutableObservableFuture<Void> connectFuture) {
+            this.connectFuture = connectFuture;
+        }
+
         @Override
         public ObservableFuture<Void> call() throws Exception {
-            synchronized (SocketIoSignalConnection.this) {
-                connectFuture = new DefaultObservableFuture<Void>(this, eventExecutor);
 
+            // This runs in the "this.executor" thread pool
+
+            synchronized (SocketIoSignalConnection.this) {
                 try {
-                    socketIO = new SocketIO();
-                    socketIO.setGson(gson);
-                    socketIO.connect(url, callback);
+                    final SocketIO finalSocketIO = finalObject(new SocketIO());
+
+                    finalSocketIO.setGson(gson);
+                    finalSocketIO.connect(url, callback);
                 } catch (MalformedURLException e) {
+                    // Will throw the event in the "eventExecutor" thread (by default is synchronous)
                     connectFuture.setFailure(e);
                 }
 
@@ -138,42 +164,63 @@ public class SocketIoSignalConnection implements SignalConnection {
     private TimerTask reconnectTimerTask = new TimerTask() {
         @Override
         public void run(Timeout timeout) throws Exception {
-            if (socketIO == null) {
-                LOGGER.error("SocketIO was null, not attempting to reconnect.");
-                reconnectScheduled = false;
-                return;
-            }
-
-            if (socketIO.isConnected()) {
-                LOGGER.debug("Was already connected, not attempting to reconnect.");
-                reconnectScheduled = false;
-
-                return;
-            }
-
-            if (connectFuture != null) {
-                LOGGER.debug("Reconnect called, but there's an existing connectFuture. Aborting reconnect.");
-                return;
-            }
-
-            LOGGER.debug("Reconnect called. Disconnecting...");
-
-            disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
+            // We are on the timer thread.
+            // Let's synchronize around this stuff so we're allowed to access it.
+            // I'm going to move over to the core boss thread to handle the work.
+            performRunnable(new Runnable() {
                 @Override
-                public void notify(Object sender, ObservableFuture<Void> item) {
-                    LOGGER.debug("... now connecting.");
+                public void run() {
+                    final SocketIO finalSocketIO = finalObject(__unsafe_socketIO);
 
-                    connect().addObserver(new Observer<ObservableFuture<Void>>() {
+                    if (finalSocketIO == null) {
+                        LOGGER.error("SocketIO was null, not attempting to reconnect.");
+                        setReconnectScheduled(false);
+
+                        return;
+                    }
+
+                    if (finalSocketIO.isConnected()) {
+                        if (LOGGER.isDebugEnabled()) {
+                            LOGGER.debug("Was already connected, not attempting to reconnect.");
+                        }
+
+                        setReconnectScheduled(false);
+
+                        return;
+                    }
+
+                    ObservableFuture<Void> finalConnectFuture = finalConnectFuture();
+
+                    if (finalConnectFuture != null) {
+                        LOGGER.debug("Reconnect called, but there's an existing connectFuture. Aborting reconnect.");
+                        return;
+                    }
+
+                    LOGGER.debug("Reconnect called. Disconnecting...");
+                    // This runs in the 'this.executor' threadpool.
+
+                    disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
                         @Override
                         public void notify(Object sender, ObservableFuture<Void> item) {
-                            reconnectScheduled = false;
+                            // This runs in the 'this.eventExecutor' threadpool.
+                            LOGGER.debug("... now connecting.");
 
-                            if (item.isSuccess()) {
-                                LOGGER.debug("Successfully reconnected!");
-                            } else {
-                                LOGGER.error("Couldn't reconnect: " + item.getCause());
-                                reconnect();
-                            }
+                            connect().addObserver(new Observer<ObservableFuture<Void>>() {
+                                @Override
+                                public void notify(Object sender, ObservableFuture<Void> item) {
+                                    // This runs in the 'this.eventExecutor' threadpool.
+                                    synchronized (SocketIoSignalConnection.this) {
+                                        setReconnectScheduled(false);
+
+                                        if (item.isSuccess()) {
+                                            LOGGER.debug("Successfully reconnected!");
+                                        } else {
+                                            LOGGER.error("Couldn't reconnect: " + item.getCause());
+                                            reconnect();
+                                        }
+                                    }
+                                }
+                            });
                         }
                     });
                 }
@@ -181,27 +228,85 @@ public class SocketIoSignalConnection implements SignalConnection {
         }
     };
 
+    private void setRetryCount(int retryCount) {
+        assertHoldsLock();
+
+        this.__unsafe_retryCount = retryCount;
+    }
+
+    private void assertHoldsLock() {
+        if (!Thread.holdsLock(this)) {
+            throw new IllegalStateException("Failed to hold lock");
+        }
+    }
+
+    private MutableObservableFuture<Void> finalConnectFuture() {
+        return finalObject(__unsafe_connectFuture);
+    }
+
+    private <T> T finalObject(T object) {
+        assertHoldsLock();
+
+        return object;
+    }
+
+    private void performRunnable(final Runnable runnable) {
+        if (runnable == null) {
+            throw new NullPointerException("runnable");
+        }
+
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("Synchronizing before running: " + runnable);
+                }
+
+                synchronized (SocketIoSignalConnection.this) {
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace("Running: " + runnable);
+                    }
+
+                    runnable.run();
+                }
+            }
+        });
+    }
+
     private final IOCallback callback = new IOCallback() {
         @Override
         public void onDisconnect() {
-            synchronized (SocketIoSignalConnection.this) {
-                if (connectFuture != null) {
-                    connectFuture.setFailure(new Exception("Disconnected"));
-                }
-            }
+            performRunnable(new Runnable() {
+                @Override
+                public void run() {
+                    final MutableObservableFuture<Void> finalConnectFuture = finalConnectFuture();
 
-            disconnectEvent.notifyObservers(SocketIoSignalConnection.this, null);
+                    if (finalConnectFuture != null) {
+                        finalConnectFuture.setFailure(new Exception("Disconnected"));
+                    }
+
+                    // If the "EventExecutor" is a SimpleExecutor, then this might cause a deadlock.
+                    // The reason is that the observer might synchronize themselves and that would be a bad order
+                    // of operations.
+                    disconnectEvent.notifyObservers(SocketIoSignalConnection.this, null);
+                }
+            });
         }
 
         @Override
         public void onConnect() {
-            synchronized (SocketIoSignalConnection.this) {
-                if (connectFuture != null) {
-                    connectFuture.setSuccess(null);
-                }
-            }
+            performRunnable(new Runnable() {
+                @Override
+                public void run() {
+                    final MutableObservableFuture<Void> finalConnectFuture = finalConnectFuture();
 
-            connectEvent.notifyObservers(SocketIoSignalConnection.this, null);
+                    if (finalConnectFuture != null) {
+                        finalConnectFuture.setSuccess(null);
+                    }
+
+                    connectEvent.notifyObservers(SocketIoSignalConnection.this, null);
+                }
+            });
         }
 
         @Override
@@ -211,39 +316,50 @@ public class SocketIoSignalConnection implements SignalConnection {
 
         @Override
         public void onSessionId(String sessionId) {
+
         }
 
         @Override
-        public void onMessage(JsonElement json, IOAcknowledge ack) {
-            try {
-                messageEvent.notifyObservers(SocketIoSignalConnection.this, json);
-            } finally {
-                if (ack != null) {
-                    ack.ack();
-                }
-            }
-        }
-
-        @Override
-        public void on(String event, IOAcknowledge ack, Object... args) {
-            try {
-                if (StringUtil.equals(event, "error")) {
-                    for (Object arg : args) {
-                        JsonObject object = (JsonObject) arg;
-
-                        SignalServerEvent signalServerEvent =
-                                new SignalServerEvent(
-                                        GsonUtil.getInt(object.get("code")),
-                                        GsonUtil.getString(object.get("message")));
-
-                        serverEvent.notifyObservers(SocketIoSignalConnection.this, signalServerEvent);
+        public void onMessage(final JsonElement json, final IOAcknowledge ack) {
+            performRunnable(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        messageEvent.notifyObservers(SocketIoSignalConnection.this, json);
+                    } finally {
+                        if (ack != null) {
+                            ack.ack();
+                        }
                     }
                 }
-            } finally {
-                if (ack != null) {
-                    ack.ack();
+            });
+        }
+
+        @Override
+        public void on(final String event, final IOAcknowledge ack, final Object... args) {
+            performRunnable(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        if (StringUtil.equals(event, "error")) {
+                            for (Object arg : args) {
+                                JsonObject object = (JsonObject) arg;
+
+                                SignalServerEvent signalServerEvent =
+                                        new SignalServerEvent(
+                                                GsonUtil.getInt(object.get("code")),
+                                                GsonUtil.getString(object.get("message")));
+
+                                serverEvent.notifyObservers(SocketIoSignalConnection.this, signalServerEvent);
+                            }
+                        }
+                    } finally {
+                        if (ack != null) {
+                            ack.ack();
+                        }
+                    }
                 }
-            }
+            });
         }
 
         @Override
@@ -261,76 +377,96 @@ public class SocketIoSignalConnection implements SignalConnection {
         }
 
         @Override
-        public void onState(int state) {
+        public void onState(final int state) {
             LOGGER.debug("onState: " + state);
 
             if (state != IOConnection.STATE_INTERRUPTED && state != IOConnection.STATE_INVALID) {
                 return;
             }
 
-            LOGGER.warn("onState: STATE_INTERRUPTED or STATE_INVALID. Scheduling reconnect for later.");
-            // Warning: commented out because it created circular synchronization... i.e. deadlock.
-//            socketIO.disconnect();
-//            socketIO = null;
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Synchronizing on (this)");
-            }
+            performRunnable(new Runnable() {
+                @Override
+                public void run() {
+                    LOGGER.warn("onState: STATE_INTERRUPTED or STATE_INVALID. Scheduling reconnect for later.");
+                    // Warning: commented out because it created circular synchronization... i.e. deadlock.
+                    //            socketIO.disconnect();
+                    //            socketIO = null;
 
-            synchronized (this) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Done synchronizing on (this)");
-                }
-
-                if (connectFuture == null) {
                     if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("The connectFuture was null. We will now try to reconnect.");
+                        LOGGER.debug("Synchronizing on (this)");
                     }
 
-                    reconnect();
-                } else {
+                    final MutableObservableFuture<Void> finalConnectFuture = finalConnectFuture();
+
                     if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("The connectFuture was not null. We are already trying to connect, so this disconnect will be ignored (first connect is not retried)");
+                        LOGGER.debug("Done synchronizing on (this)");
                     }
 
-                    if (connectFuture != null) {
-                        connectFuture.setFailure(new Exception("State changed to " + state));
+                    if (finalConnectFuture == null) {
+                        if (LOGGER.isDebugEnabled()) {
+                            LOGGER.debug("The connectFuture was null. We will now try to reconnect.");
+                        }
+
+                        reconnect();
+                    } else {
+                        if (LOGGER.isDebugEnabled()) {
+                            LOGGER.debug("The connectFuture was not null. We are already trying to connect, so this disconnect will be ignored (first connect is not retried)");
+                        }
+
+                        finalConnectFuture.setFailure(new Exception("State changed to " + state));
                     }
+
                 }
-            }
+            });
         }
     };
 
+
     public synchronized void reconnect() {
-        if (reconnectScheduled) {
+        final boolean finalReconnectAlreadyScheduled = getFinalReconnectScheduled();
+
+        if (finalReconnectAlreadyScheduled) {
             LOGGER.warn("Already scheduled reconnect, not scheduling another.");
             return;
         }
 
-        long retryInSeconds = retryStrategy.getNextRetryInterval(retryCount);
+        // Casting to/from int/Integer/int. Oh well.
+        final int finalRetryCount = finalObject(__unsafe_retryCount);
+
+        long retryInSeconds = retryStrategy.getNextRetryInterval(finalRetryCount);
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(String.format("Scheduling reconnect in %s seconds at %s.", retryInSeconds, FutureDateUtil.inFuture(retryInSeconds, TimeUnit.SECONDS)));
         }
 
         timer.newTimeout(reconnectTimerTask, retryInSeconds, TimeUnit.SECONDS);
-        reconnectScheduled = true;
-        retryCount++;
+        setReconnectScheduled(true);
+        setRetryCount(finalRetryCount + 1);
     }
 
     @Override
     public boolean isConnected() {
-        if (socketIO == null) {
+        // NOTE: Synchronizing on "isConnected()" seems unuseful.
+        // Sure, we want to be able to tell them an unchanging truth state, though even if we sync'd on "this"
+        // and returned a value, it would have no meaning to them because we released our synch when returning the result.
+        // Therefore, the nanosecond after the result is returned, its accuracy is in question.
+        // So just don't sync.
+        final SocketIO UNSAFE_SOCKET_IO_TRANSIENT = this.__unsafe_socketIO;
+
+        if (UNSAFE_SOCKET_IO_TRANSIENT == null) {
             return false;
         }
 
-        return socketIO.isConnected();
+        return UNSAFE_SOCKET_IO_TRANSIENT.isConnected();
     }
 
     @Override
-    public ObservableFuture<ObservableFuture<Object[]>> emit(final String event, final Object... objects) {
+    public synchronized ObservableFuture<ObservableFuture<Object[]>> emit(final String event, final Object... objects) {
+        final SocketIO finalSocketIO = finalObject(__unsafe_socketIO);
+
         ObservableFuture<Object[]> ackFuture = importantTaskExecutor.enqueue(
                 executor,
-                new SendWithAckTask(socketIO, event, objects, eventExecutor),
+                new SendWithAckTask(finalSocketIO, event, objects, eventExecutor),
                 FutureDateUtil.in30Seconds());
 
         // the underlying library doesn't tell us when transmission is successful.
@@ -368,6 +504,47 @@ public class SocketIoSignalConnection implements SignalConnection {
             return result;
         }
     }
+
+    private boolean getFinalReconnectScheduled() {
+        assertHoldsLock();
+
+        return __unsafe_reconnectScheduled;
+    }
+
+    private boolean getReconnectScheduled() {
+        return __unsafe_reconnectScheduled;
+    }
+
+    private void setReconnectScheduled(boolean reconnectScheduled) {
+        assertHoldsLock();
+
+        __unsafe_reconnectScheduled = reconnectScheduled;
+    }
+
+    private void clearConnectFutureIf(ObservableFuture<Void> comparisonFuture) {
+        ObservableFuture<Void> finalConnectFuture = finalConnectFuture();
+
+        if (comparisonFuture != finalConnectFuture) {
+            throw new IllegalStateException(String.format("%s != %s", finalConnectFuture, comparisonFuture));
+        }
+
+        clearConnectFuture();
+    }
+
+    private void clearConnectFuture() {
+        assertHoldsLock();
+
+        setConnectFuture(null);
+    }
+
+    private MutableObservableFuture<Void> setConnectFuture(MutableObservableFuture<Void> connectFuture) {
+        assertHoldsLock();
+
+        this.__unsafe_connectFuture = connectFuture;
+
+        return connectFuture;
+    }
+
 
     @Override
     public Observable<Throwable> getExceptionEvent() {
@@ -425,8 +602,12 @@ public class SocketIoSignalConnection implements SignalConnection {
     }
 
     @Override
-    public Observable<JsonElement> getMessageEvent() { return messageEvent; }
+    public Observable<JsonElement> getMessageEvent() {
+        return messageEvent;
+    }
 
     @Override
-    public ObservableHelper<SignalServerEvent> getServerEvent() { return serverEvent; }
+    public ObservableHelper<SignalServerEvent> getServerEvent() {
+        return serverEvent;
+    }
 }

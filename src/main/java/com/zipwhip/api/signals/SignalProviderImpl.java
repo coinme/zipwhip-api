@@ -42,15 +42,15 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalProviderImpl.class);
 
-    public static final int EMPTY_REQUEST               = 1;
-    public static final int EMPTY_SIGNATURE             = 2;
-    public static final int CLIENT_ID_ALREADY_EXISTS    = 3;
-    public static final int FAILED_TO_LOCK              = 4;
-    public static final int NOT_CONNECTED               = 5;
-    public static final int REQUEST_CANCELLED           = 6;
-    public static final int ACK_TIMEOUT                 = 7;
-    public static final int EMPTY_CLIENT_ID             = 8;
-    public static final int UNKNOWN_CLIENT_ID           = 9;
+    public static final int EMPTY_REQUEST = 1;
+    public static final int EMPTY_SIGNATURE = 2;
+    public static final int CLIENT_ID_ALREADY_EXISTS = 3;
+    public static final int FAILED_TO_LOCK = 4;
+    public static final int NOT_CONNECTED = 5;
+    public static final int REQUEST_CANCELLED = 6;
+    public static final int ACK_TIMEOUT = 7;
+    public static final int EMPTY_CLIENT_ID = 8;
+    public static final int UNKNOWN_CLIENT_ID = 9;
 
     private final ObservableHelper<SubscribeResult> subscribeEvent;
     private final ObservableHelper<SubscribeResult> unsubscribeEvent;
@@ -261,7 +261,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                         if (item.getResult() != null) {
                             String payload = item.getResult();
                             try {
-                                if(Long.parseLong(payload) != pingCount) {
+                                if (Long.parseLong(payload) != pingCount) {
                                     LOGGER.error("Pong mismatch! Reconnecting. %s vs %s", payload, pingCount);
 
                                     resultFuture.setFailure(new IllegalStateException(String.format("Wrong pong response (%s) for ping (%s)!", payload, pingCount)));
@@ -866,58 +866,107 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
             ObservableFuture<Void> connectFuture = signalConnection.connect();
 
-            connectFuture.addObserver(new Observer<ObservableFuture<Void>>() {
-                @Override
-                public void notify(Object sender, ObservableFuture<Void> item) {
-                    if (cascadeFailure(item, resultFuture)) {
-                        return;
-                    }
-
-                    synchronized (SignalProviderImpl.this) {
-                        // Our socket is connected, now we need to issue a bind request
-                        String _clientId = getClientId();
-                        String _token = token;
-
-                        final ObservableFuture<BindResult> _bindFuture = executeBindRequest(_clientId, _token, false);
-
-                        // When this future is successful, we need to save the details
-                        _bindFuture.addObserver(new Observer<ObservableFuture<BindResult>>() {
-                            @Override
-                            public void notify(Object sender, ObservableFuture<BindResult> item) {
-                                synchronized (SignalProviderImpl.this) {
-                                    if (item.isFailed()) {
-                                        LOGGER.error("Bind future not successful!", item.getCause());
-                                        if (resultFuture != null) {
-                                            resultFuture.setFailure(new Exception("The bindFuture was not successful", item.getCause()));
-                                        }
-
-                                        return;
-                                    } else if (item.isCancelled()) {
-                                        LOGGER.error("Bind future cancelled! " + item);
-                                        if (resultFuture != null) {
-                                            resultFuture.cancel();
-                                        }
-
+            connectFuture.addObserver(
+                    new ThreadSafeObserver<Void>(
+                            new Observer<ObservableFuture<Void>>() {
+                                @Override
+                                public void notify(Object sender, ObservableFuture<Void> item) {
+                                    if (cascadeFailure(item, resultFuture)) {
                                         return;
                                     }
 
-                                    // Success!
-                                    if (resultFuture != null) {
-                                        resultFuture.setSuccess(null);
-                                    }
+                                    // Our socket is connected, now we need to issue a bind request
+                                    String _clientId = getClientId();
+                                    String _token = token;
+
+                                    final ObservableFuture<BindResult> _bindFuture = executeBindRequest(_clientId, _token, false);
+
+                                    // When this future is successful, we need to save the details
+                                    _bindFuture.addObserver(new Observer<ObservableFuture<BindResult>>() {
+                                        @Override
+                                        public void notify(Object sender, ObservableFuture<BindResult> item) {
+                                            synchronized (SignalProviderImpl.this) {
+                                                if (item.isFailed()) {
+                                                    LOGGER.error("Bind future not successful!", item.getCause());
+                                                    if (resultFuture != null) {
+                                                        resultFuture.setFailure(new Exception("The bindFuture was not successful", item.getCause()));
+                                                    }
+
+                                                    return;
+                                                } else if (item.isCancelled()) {
+                                                    LOGGER.error("Bind future cancelled! " + item);
+                                                    if (resultFuture != null) {
+                                                        resultFuture.cancel();
+                                                    }
+
+                                                    return;
+                                                }
+
+                                                // Success!
+                                                if (resultFuture != null) {
+                                                    resultFuture.setSuccess(null);
+                                                }
+                                            }
+                                        }
+                                    });
+
+                                    // I removed this because the connectionChangedEvent was firing twice.
+                                    // Once from us, and once from the underlying library
+                                    // connectionChangedEvent.notifyObservers(SignalProviderImpl.this, null);
                                 }
                             }
-                        });
-                    }
-
-                    // I removed this because the connectionChangedEvent was firing twice.
-                    // Once from us, and once from the underlying library
-//                    connectionChangedEvent.notifyObservers(SignalProviderImpl.this, null);
-                }
-            });
+                    )
+            );
 
             return resultFuture;
         }
+    }
+
+    private class ThreadSafeObserver<T> implements Observer<ObservableFuture<T>> {
+
+        private final Observer<ObservableFuture<T>> observer;
+
+        private ThreadSafeObserver(Observer<ObservableFuture<T>> observer) {
+            this.observer = observer;
+        }
+
+        @Override
+        public void notify(final Object sender, final ObservableFuture<T> item) {
+            runSynchronized(new Runnable() {
+                @Override
+                public void run() {
+                    observer.notify(sender, item);
+                }
+
+                @Override
+                public String toString() {
+                    return "[ObserverAdapter:" + observer + "]";
+                }
+            });
+        }
+    }
+
+    private void runSynchronized(final Runnable runnable) {
+        if (runnable == null) {
+            throw new NullPointerException("runnable");
+        }
+
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("Synchronizing before running: " + runnable);
+                }
+
+                synchronized (SignalProviderImpl.this) {
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace("Running: " + runnable);
+                    }
+
+                    runnable.run();
+                }
+            }
+        });
     }
 
     private void clearPingFuture() {
