@@ -13,6 +13,7 @@ import com.zipwhip.events.Observer;
 import com.zipwhip.executors.SimpleExecutor;
 import com.zipwhip.important.ImportantTaskExecutor;
 import com.zipwhip.lifecycle.CascadingDestroyableBase;
+import com.zipwhip.signals2.SignalServerEvent;
 import com.zipwhip.signals2.presence.Presence;
 import com.zipwhip.signals2.presence.UserAgent;
 import com.zipwhip.util.CollectionUtil;
@@ -40,6 +41,16 @@ import java.util.concurrent.*;
 public class SignalProviderImpl extends CascadingDestroyableBase implements SignalProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalProviderImpl.class);
+
+    public static final int EMPTY_REQUEST               = 1;
+    public static final int EMPTY_SIGNATURE             = 2;
+    public static final int CLIENT_ID_ALREADY_EXISTS    = 3;
+    public static final int FAILED_TO_LOCK              = 4;
+    public static final int NOT_CONNECTED               = 5;
+    public static final int REQUEST_CANCELLED           = 6;
+    public static final int ACK_TIMEOUT                 = 7;
+    public static final int EMPTY_CLIENT_ID             = 8;
+    public static final int UNKNOWN_CLIENT_ID           = 9;
 
     private final ObservableHelper<SubscribeResult> subscribeEvent;
     private final ObservableHelper<SubscribeResult> unsubscribeEvent;
@@ -335,16 +346,14 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
     private Observer<Void> issueBindRequestOnConnectCallback = new Observer<Void>() {
         @Override
         public void notify(Object sender, Void item) {
-            synchronized (SignalProviderImpl.this) {
-                if (bindFuture != null) {
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("(issueBindRequestOnConnectCallback) The bindFuture was not already null, so somebody else is already handling this.");
-                    }
-                    return;
+            if (bindFuture != null) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("(issueBindRequestOnConnectCallback) The bindFuture was not already null, so somebody else is already handling this.");
                 }
-
-                executeBindRequest();
+                return;
             }
+
+            executeBindRequest();
         }
     };
 
@@ -359,6 +368,12 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             }
 
             return bindFuture;
+        }
+
+        if (pingFuture != null) {
+            LOGGER.debug("Initiating bind, so cancelling any existing pings.");
+
+            clearPingFuture();
         }
 
         final BindRequest _bindRequest = new BindRequest(getUserAgent(), clientId, token);
@@ -439,6 +454,44 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             }
 
             bufferedOrderedQueue.append(deliveredMessage);
+        }
+    };
+
+    private final Observer<SignalServerEvent> serverEventProcessingObserver = new Observer<SignalServerEvent>() {
+        @Override
+        public void notify(Object sender, SignalServerEvent event) {
+            synchronized (SignalProviderImpl.this) {
+
+                switch (event.getCode()) {
+                    case EMPTY_REQUEST:
+                        LOGGER.error("Empty request!");
+                        break;
+                    case EMPTY_SIGNATURE:
+                        LOGGER.error("Empty signature!");
+                        break;
+                    case CLIENT_ID_ALREADY_EXISTS:
+                        LOGGER.error("clientId already exists!");
+                        break;
+                    case FAILED_TO_LOCK:
+                        LOGGER.error("Failed to acquire required lock!");
+                        break;
+                    case NOT_CONNECTED:
+                        LOGGER.error("Not connected!");
+                        break;
+                    case REQUEST_CANCELLED:
+                        LOGGER.error("Request cancelled!");
+                        break;
+                    case ACK_TIMEOUT:
+                        LOGGER.error("Ack timeout!");
+                        break;
+                    case EMPTY_CLIENT_ID:
+                        LOGGER.error("Empty clientId!");
+                        break;
+                    case UNKNOWN_CLIENT_ID:
+                        LOGGER.error("Unknown clientId!");
+                        break;
+                }
+            }
         }
     };
 
@@ -624,6 +677,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             this.signalConnection.getDisconnectEvent().removeObserver(connectionChangedEvent);
             this.signalConnection.getExceptionEvent().removeObserver(exceptionEvent);
             this.signalConnection.getMessageEvent().removeObserver(messageProcessingObserver);
+            this.signalConnection.getServerEvent().removeObserver(serverEventProcessingObserver);
         }
 
         this.signalConnection = signalConnection;
@@ -634,6 +688,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             this.signalConnection.getDisconnectEvent().addObserver(connectionChangedEvent);
             this.signalConnection.getExceptionEvent().addObserver(exceptionEvent);
             this.signalConnection.getMessageEvent().addObserver(messageProcessingObserver);
+            this.signalConnection.getServerEvent().addObserver(serverEventProcessingObserver);
         }
     }
 
@@ -1036,6 +1091,12 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         @Override
         public ObservableFuture<String> call() throws Exception {
+            if (!connection.isConnected()) {
+                LOGGER.error("Can't ping, not connected!");
+
+                return new FakeFailingObservableFuture<String>(this, null);
+            }
+
             ObservableFuture<ObservableFuture<Object[]>> emitFuture = connection.emit("ping", payload);
 
             emitFuture.addObserver(new ObservePingAcknowledgementObserver(result));

@@ -3,6 +3,8 @@ package com.zipwhip.api.signals;
 import com.google.gson.JsonElement;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.events.Observable;
+import com.zipwhip.events.ObservableHelper;
+import com.zipwhip.signals2.SignalServerEvent;
 
 /**
  * Date: 9/5/13
@@ -24,6 +26,8 @@ public interface SignalConnection {
     Observable<Void> getDisconnectEvent();
 
     Observable<JsonElement> getMessageEvent();
+
+    ObservableHelper<SignalServerEvent> getServerEvent();
 
     boolean isConnected();
 
