@@ -147,7 +147,7 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
 
             synchronized (SocketIoSignalConnection.this) {
                 try {
-                    final SocketIO finalSocketIO = finalObject(new SocketIO());
+                    final SocketIO finalSocketIO = setSocketIO(new SocketIO());
 
                     finalSocketIO.setGson(gson);
                     finalSocketIO.connect(url, callback);
@@ -159,6 +159,14 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
                 return connectFuture;
             }
         }
+    }
+
+    private SocketIO setSocketIO(SocketIO socketIO) {
+        assertHoldsLock();
+
+        __unsafe_socketIO = socketIO;
+
+        return socketIO;
     }
 
     private TimerTask reconnectTimerTask = new TimerTask() {
