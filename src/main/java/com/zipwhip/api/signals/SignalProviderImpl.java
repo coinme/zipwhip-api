@@ -68,7 +68,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
     private BufferedOrderedQueue<DeliveredMessage> bufferedOrderedQueue;
     private Gson gson = SignalProviderGsonBuilder.getInstance();
     private SignalConnection signalConnection;
-    private long pingTimeoutSeconds = 10;
+    private long pingTimeoutSeconds = 30;
 
     private final Map<String, SubscriptionRequest> pendingSubscriptionRequests = new ConcurrentHashMap<String, SubscriptionRequest>();
 
