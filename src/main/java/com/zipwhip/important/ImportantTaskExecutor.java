@@ -234,7 +234,7 @@ public class ImportantTaskExecutor extends CascadingDestroyableBase {
     }
 
     private <TResponse> DefaultObservableFuture<TResponse> createObservableFuture(Executor executor, final Callable request) {
-        return new DefaultObservableFuture<TResponse>(request, executor) {
+        return new DefaultObservableFuture<TResponse>(request, executor, "ImportantTaskExecutorFuture") {
             @Override
             public String toString() {
                 return String.format("[ImportantTaskExecutorFuture: %s]", request);

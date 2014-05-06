@@ -566,7 +566,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
     }
 
     private <T> MutableObservableFuture<T> future() {
-        return new DefaultObservableFuture<T>(this, eventExecutor);
+        return new DefaultObservableFuture<T>(this, eventExecutor, "Future:" + this.getClass().getName());
     }
 
     @Override
@@ -820,6 +820,16 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
             return true;
         }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("SignalSubscribeCallback{");
+            sb.append("sessionKey='").append(sessionKey).append('\'');
+            sb.append(", subscriptionId='").append(subscriptionId).append('\'');
+            sb.append(", scope='").append(scope).append('\'');
+            sb.append('}');
+            return sb.toString();
+        }
     }
 
     private static class CascadeFailureObserver<T> implements Observer<ObservableFuture<T>> {
@@ -1050,7 +1060,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         private BindTask(SignalConnection connection, BindRequest request, Executor executor, Gson gson) {
             this.request = request;
             this.connection = connection;
-            this.result = new DefaultObservableFuture<BindResult>(this, executor);
+            this.result = new DefaultObservableFuture<BindResult>(this, executor, "BindFuture");
             this.gson = gson;
         }
 
@@ -1287,4 +1297,5 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         return false;
     }
+
 }

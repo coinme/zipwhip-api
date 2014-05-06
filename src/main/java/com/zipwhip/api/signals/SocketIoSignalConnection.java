@@ -79,7 +79,7 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
             return finalExternalConnectFuture;
         }
 
-        final MutableObservableFuture<Void> finalConnectFuture = setConnectFuture(new DefaultObservableFuture<Void>(this, eventExecutor));
+        final MutableObservableFuture<Void> finalConnectFuture = setConnectFuture(new DefaultObservableFuture<Void>(this, eventExecutor, "connectFuture"));
 
         final ObservableFuture<Void> result = __unsafe_externalConnectFuture = importantTaskExecutor.enqueue(executor, new ConnectTask(finalConnectFuture), FutureDateUtil.in30Seconds());
 
@@ -502,13 +502,15 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
                 return new FakeFailingObservableFuture<Object[]>(this, new IllegalStateException("socketIO was null!"));
             }
 
-            final MutableObservableFuture<Object[]> result = new DefaultObservableFuture<Object[]>(this, eventExecutor);
+            final MutableObservableFuture<Object[]> result = new DefaultObservableFuture<Object[]>(this, eventExecutor, "SendWithAckFuture");
+
             socketIO.emit(event, new IOAcknowledge() {
                 @Override
                 public void ack(Object... args) {
                     result.setSuccess(args);
                 }
             }, args);
+
             return result;
         }
     }

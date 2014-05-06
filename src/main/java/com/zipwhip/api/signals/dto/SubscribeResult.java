@@ -1,5 +1,8 @@
 package com.zipwhip.api.signals.dto;
 
+import com.zipwhip.util.CollectionUtil;
+import com.zipwhip.util.StringUtil;
+
 import java.util.Set;
 
 /**
@@ -71,5 +74,30 @@ public class SubscribeResult {
 
     public Throwable getCause() {
         return cause;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("SubscribeResult{");
+
+        if (cause != null) {
+            sb.append("cause=").append(cause);
+        }
+
+        if (StringUtil.exists(sessionKey)) {
+            sb.append(", sessionKey='").append(sessionKey).append('\'');
+        }
+
+        if (StringUtil.exists(subscriptionId)) {
+            sb.append(", subscriptionId='").append(subscriptionId).append('\'');
+        }
+
+        if (CollectionUtil.exists(channels)) {
+            sb.append(", channels=").append(channels);
+        }
+
+        sb.append('}');
+
+        return sb.toString();
     }
 }

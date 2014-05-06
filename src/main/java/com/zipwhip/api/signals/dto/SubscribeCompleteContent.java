@@ -32,4 +32,13 @@ public class SubscribeCompleteContent implements Serializable {
     public void setAddresses(Set<String> addresses) {
         this.addresses = addresses;
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("SubscribeCompleteContent{");
+        sb.append("subscriptionId='").append(subscriptionId).append('\'');
+        sb.append(", addresses=").append(addresses);
+        sb.append('}');
+        return sb.toString();
+    }
 }

@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class TimerScheduler extends CascadingDestroyableBase implements Scheduler {
 
     private final Timer timer;
-    private final ObservableHelper<String> observableHelper = new ObservableHelper<String>();
+    private final ObservableHelper<String> observableHelper = new ObservableHelper<String>("Scheduler");
     private Map<String, Timeout> map = Collections.synchronizedMap(new TreeMap<String, Timeout>(HashCodeComparator.getInstance()));
 
     public TimerScheduler() {

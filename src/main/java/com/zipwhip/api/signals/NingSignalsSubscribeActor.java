@@ -67,7 +67,7 @@ public class NingSignalsSubscribeActor implements SignalsSubscribeActor {
 
         applyParameters(builder, clientId, sessionKey, subscriptionId, scope);
 
-        MutableObservableFuture<Void> future = new DefaultObservableFuture<Void>(this, eventExecutor);
+        MutableObservableFuture<Void> future = new DefaultObservableFuture<Void>(this, eventExecutor, "SubscribeFuture");
 
         return executeAsync(builder, HANDLER, future);
     }
