@@ -4,6 +4,7 @@ import com.ning.http.client.AsyncHttpClient;
 import com.zipwhip.api.settings.MemorySettingStore;
 import com.zipwhip.api.settings.SettingsStore;
 import com.zipwhip.api.signals.*;
+import com.zipwhip.api.signals.dto.BindResult;
 import com.zipwhip.api.signals.dto.DeliveredMessage;
 import com.zipwhip.api.signals.dto.SubscribeResult;
 import com.zipwhip.concurrent.DefaultObservableFuture;
@@ -22,6 +23,7 @@ import com.zipwhip.lifecycle.DestroyableBase;
 import com.zipwhip.reliable.retry.ExponentialBackoffRetryStrategy;
 import com.zipwhip.reliable.retry.RetryStrategy;
 import com.zipwhip.signals2.message.Message;
+import com.zipwhip.signals2.presence.Presence;
 import com.zipwhip.signals2.presence.UserAgent;
 import com.zipwhip.timers.HashedWheelTimer;
 import com.zipwhip.timers.Timeout;
@@ -45,7 +47,8 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleZipwhipClient.class);
 
     private final ObservableHelper<ConnectionState> connectionChangedObservableHelper;
-    private final ObservableHelper<Message> signalReceivedObservableHelper;
+    private final ObservableHelper<DeliveredMessage> signalReceivedObservableHelper;
+    private final ObservableHelper<Event<Presence>> presenceChangedObservableHelper;
 
     private SettingsStore settingsStore;
     private CommonExecutorFactory executorFactory;
@@ -69,7 +72,8 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
 
     public SimpleZipwhipClient() {
         connectionChangedObservableHelper = new ObservableHelper<ConnectionState>("connectionChanged");
-        signalReceivedObservableHelper = new ObservableHelper<Message>("signalReceived");
+        signalReceivedObservableHelper = new ObservableHelper<DeliveredMessage>("signalReceived");
+        presenceChangedObservableHelper = new ObservableHelper<Event<Presence>>("presenceChangedObservableHelper");
     }
 
     private synchronized void init() {
@@ -237,6 +241,24 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
         return finalExternalConnectFuture;
     }
 
+    public synchronized ObservableFuture<String> ping() throws Exception {
+        assertConnectionState(ConnectionState.SUBSCRIBED_AND_WORKING);
+
+        return signalProvider.ping();
+    }
+
+    public void onSignalReceived(Observer<DeliveredMessage> observer) {
+        signalReceivedObservableHelper.addObserver(observer);
+    }
+
+    public void onSignalsConnectionChanged(Observer<ConnectionState> observer) {
+        connectionChangedObservableHelper.addObserver(observer);
+    }
+
+    public void onSignalsPresenceChanged(Observer<Event<Presence>> observer) {
+        presenceChangedObservableHelper.addObserver(observer);
+    }
+
     private MutableObservableFuture<Void> setExternalConnectFutureIfNull(MutableObservableFuture<Void> future) {
         final MutableObservableFuture<Void> finalExternalConnectFuture = finalExternalConnectFuture();
 
@@ -272,7 +294,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     private ObservableFuture<Void> __unsafe_connect() {
         setConnectionState(ConnectionState.CONNECTING);
 
-        final UserAgent userAgent = this.getFinalUserAgent();
+        final UserAgent userAgent = this.finalUserAgent();
         final String clientId = this.finalSetting(SettingsStore.Keys.CLIENT_ID);
         final String token = this.finalSetting(SettingsStore.Keys.CLIENT_ID_TOKEN);
 
@@ -293,12 +315,15 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     }
 
     private void runOnSameSignalProvider(final Runnable runnable) {
-        final SignalProvider signalProvider1 = getFinalSignalProvider();
+        final SignalProvider signalProvider1 = finalSignalProvider();
 
         runOnSameSignalProvider(signalProvider1, runnable);
     }
 
     private void runOnSameSignalProvider(final SignalProvider signalProvider, final Runnable runnable) {
+        // We can't do this, because we may or may not hold a lock.
+//        assertSameSignalProvider(signalProvider);
+
         run(new Runnable() {
             @Override
             public void run() {
@@ -311,9 +336,8 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
         });
     }
 
-
     private void assertSameSignalProvider(SignalProvider signalProvider) {
-        final SignalProvider finalSignalProvider = getFinalSignalProvider();
+        final SignalProvider finalSignalProvider = finalSignalProvider();
 
         if (signalProvider != finalSignalProvider) {
             throw new RuntimeException(String.format("Expected signalProvider(%s) but found (%s)", signalProvider, finalSignalProvider));
@@ -345,14 +369,8 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
         }
     }
 
-    private String getFinalSessionKey() {
-        accessSessionKey();
-
-        return this.finalSetting(SettingsStore.Keys.SESSION_KEY);
-    }
-
-    private void accessSessionKey() {
-        assertHoldsLock(this);
+    private String finalSessionKey() {
+        return finalSetting(SettingsStore.Keys.SESSION_KEY);
     }
 
     /**
@@ -361,7 +379,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
      * @param runnable
      */
     private void runOnSameAccount(final Runnable runnable) {
-        final String originalFinalSessionKey = this.getFinalSessionKey();
+        final String originalFinalSessionKey = this.finalSessionKey();
         // Only Run on the same account.
         run(new Runnable() {
             @Override
@@ -371,7 +389,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
                 }
 
                 synchronized (SimpleZipwhipClient.this) {
-                    final String finalSessionKey = getFinalSessionKey();
+                    final String finalSessionKey = finalSessionKey();
 
                     if (!StringUtil.equalsIgnoreCase(originalFinalSessionKey, finalSessionKey)) {
                         LOGGER.error(String.format("sessionKey mismatch (%s/%s). Ignoring runnable: %s", originalFinalSessionKey, finalSessionKey, runnable));
@@ -635,7 +653,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     /**
      * @return an unchanging signal provider.
      */
-    private SignalProvider getFinalSignalProvider() {
+    private SignalProvider finalSignalProvider() {
         accessSignalProvider();
 
         return signalProvider;
@@ -680,7 +698,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
 
                     // Since we are in the RETRY ConnectionState, the SignalProvider should exist.
                     // It will only not exist if we are DISCONNECTED or have not connected ever before.
-                    final SignalProvider finalSignalProvider = getFinalSignalProvider();
+                    final SignalProvider finalSignalProvider = finalSignalProvider();
 
                     assert (finalSignalProvider != null);
                     assert (finalSignalProvider == ReconnectTimerTask.this.signalProvider);
@@ -707,65 +725,6 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
 
         return signalProvider.subscribe(sessionKey, sessionKey, scope);
     }
-
-//    private final Observer<ObservableFuture<Void>> subscribeRequestObserver = new Observer<ObservableFuture<Void>>() {
-//        @Override
-//        public void notify(Object sender, ObservableFuture<Void> future) {
-//            synchronized (SimpleZipwhipClient.this) {
-//                if (subscribeFuture != future) {
-//                    LOGGER.error("The subscribe future changed underneath us, so we're not going to process the result.");
-//                    return;
-//                }
-//
-//                if (future.isSuccess()) {
-//                    setState(ConnectionState.SUBSCRIBED);
-//                } else {
-//                    setState(ConnectionState.INTERRUPTED_WAITING_TO_RETRY);
-//
-//                    __unsafe_disconnectNowAndReconnectLater();
-//                }
-//            }
-//
-//        }
-//    };
-
-    private void __unsafe_disconnectNowAndReconnectLater() {
-
-        final SignalProvider finalSignalProvider = getFinalSignalProvider();
-
-        if (finalSignalProvider == null) {
-            // There is no current signalProvider... That's weird... Go ahead and just try to reconnectLater.
-//            __unsafe_reconnectLater();
-        } else {
-            // The current SignalProvider might be connected
-            if (finalSignalProvider.isConnected())
-                finalSignalProvider
-                        .disconnect()
-                        .addObserver(disconnectObserver);
-        }
-
-        try {
-            if (signalProvider != null) {
-                signalProvider.disconnect();
-            }
-        } finally {
-//            __unsafe_reconnectLater();
-        }
-    }
-
-    private Observer<ObservableFuture<Void>> disconnectObserver = new Observer<ObservableFuture<Void>>() {
-        @Override
-        public void notify(Object sender, ObservableFuture<Void> item) {
-            // We may or may not be in the expected state. We need to check.
-            // 1. Are we currently disconnected?
-            // 2. Are we in a state that expects to reconnect?
-
-//            __unsafe_reconnectLater();
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("The signalProvider announced disconnected.");
-            }
-        }
-    };
 
     private long getNextRetryInterval() {
         // handle some sort of retry.
@@ -819,14 +778,18 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
         connectionChangedObservableHelper.notifyObservers(this, state);
     }
 
-    private void accessConnectionState() {
-        assertHoldsLock(this);
-    }
-
     private void attachToSignalProvider(SignalProvider signalProvider) {
         signalProvider.getConnectionChangedEvent().addObserver(connectionChangedEvent);
-//        signalProvider.getPresenceChangedEvent().addObserver(presenceChangedEvent);
-//        signalProvider.getSignalReceivedEvent().addObserver(signalReceivedEvent);
+        signalProvider.getBindEvent().addObserver(bindEvent);
+        signalProvider.getPresenceChangedEvent().addObserver(presenceChangedObservableHelper);
+        signalProvider.getSignalReceivedEvent().addObserver(signalReceivedObservableHelper);
+    }
+
+    private void detachFromSignalProvider(SignalProvider signalProvider) {
+        signalProvider.getConnectionChangedEvent().removeObserver(connectionChangedEvent);
+        signalProvider.getBindEvent().removeObserver(bindEvent);
+        signalProvider.getPresenceChangedEvent().removeObserver(presenceChangedObservableHelper);
+        signalProvider.getSignalReceivedEvent().removeObserver(signalReceivedObservableHelper);
     }
 
     private final Observer<Void> connectionChangedEvent = new Observer<Void>() {
@@ -835,7 +798,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
             // We are already in the boss thread.
             synchronized (SimpleZipwhipClient.this) {
                 // No one is able to change the state except for us, we hold the golden lock.
-                final SignalProviderImpl finalSignalProvider = (SignalProviderImpl) getFinalSignalProvider();
+                final SignalProviderImpl finalSignalProvider = (SignalProviderImpl) finalSignalProvider();
                 final SignalConnection finalSignalConnection = finalSignalProvider == null ? null : finalSignalProvider.getSignalConnection();
 
                 // The sender could be either the connection or the provider.
@@ -865,62 +828,28 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
                 connectionChangedObservableHelper.notifyObservers(SimpleZipwhipClient.this, finalConnectionState());
             }
         }
-
-//                private ConnectionState __unsafe_detectConnectionState() {
-//                    final SignalProvider finalSignalProvider = getFinalSignalProvider();
-//                    final SignalConnection finalSignalConnection = (finalSignalProvider == null) ? (null) : ((SignalProviderImpl)finalSignalProvider).getSignalConnection();
-//                    boolean connected = finalSignalProvider != null && finalSignalProvider.isConnected();
-//                    String clientId = finalSignalConnection == null ? null : finalSignalProvider.getClientId();
-//                    String subscribedClientId = finalSetting(SettingsStore.Keys.LAST_SUBSCRIBED_CLIENT_ID);
-//
-////                        CONNECTING,
-////                        CONNECTED,
-////                        SUBSCRIBE_FAILED_WAITING_TO_RETRY,
-////                        SUBSCRIBING,
-////                        SUBSCRIBED_AND_WORKING,
-////                        INTERRUPTED_WAITING_TO_RETRY,
-////                        DISCONNECTING, (not detectable)
-////                        DISCONNECTED (signalProvider will be null)
-//
-//                    if (finalInnerConnectFuture() != null) {
-//                        // We are not yet connected with the initial connect.
-//                        // This future gets cleared on subscribe.
-//                    }
-//
-//                    if (!connected) {
-//                        // We might be interrupted, etc.
-//
-//                        // DISCONNECTED means that we have no sessionKey and are not trying
-//                        if (finalSignalProvider == null) {
-//                            return ConnectionState.DISCONNECTED;
-//                        }
-//
-//                        return ConnectionState.INTERRUPTED_WAITING_TO_RETRY;
-//                    }
-//
-//                    if (StringUtil.isNullOrEmpty(clientId)) {
-//                        // We are not yet subscribed to a clientId.
-//                        return ConnectionState.SUBSCRIBING;
-//                    }
-//
-//                    if (StringUtil.isNullOrEmpty(subscribedClientId)) {
-//                        return ConnectionState.SUBSCRIBE_FAILED_WAITING_TO_RETRY;
-//                    }
-//
-//                    // We are connected. Are we working?
-//                    if (StringUtil.equalsIgnoreCase(subscribedClientId, clientId)) {
-//                        return ConnectionState.SUBSCRIBED_AND_WORKING;
-//                    }
-//
-//                    return null;
-//                }
     };
 
-    private void detachFromSignalProvider(SignalProvider signalProvider) {
-        signalProvider.getConnectionChangedEvent().removeObserver(connectionChangedEvent);
-//        signalProvider.getPresenceChangedEvent().removeObserver(presenceChangedEvent);
-//        signalProvider.getSignalReceivedEvent().removeObserver(signalReceivedEvent);
-    }
+    private final Observer<BindResult> bindEvent = new Observer<BindResult>() {
+        @Override
+        public void notify(Object sender, final BindResult item) {
+            // We should run this in our own thread.
+
+            runOnSameSignalProvider((SignalProvider) sender, new Runnable() {
+                @Override
+                public void run() {
+                    if (item == null) {
+                        // We failed to bind... What. the. fuck.
+                    } else {
+                        // TODO: Handle bind failure???
+
+                        settingsStore.put(SettingsStore.Keys.CLIENT_ID, item.getClientId());
+                        settingsStore.put(SettingsStore.Keys.CLIENT_ID_TOKEN, item.getToken());
+                    }
+                }
+            });
+        }
+    };
 
     private int incrementAttemptCount() {
         assertHoldsLock(this);
@@ -929,15 +858,11 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     }
 
     private boolean __unsafe_isReturningUser(String sessionKey) {
-        return StringUtil.equalsIgnoreCase(sessionKey, getFinalSessionKey());
+        return StringUtil.equalsIgnoreCase(sessionKey, finalSessionKey());
     }
 
     private synchronized boolean isLoggedIn() {
-        return StringUtil.exists(getFinalSessionKey());
-    }
-
-    private String getSavedSessionKey() {
-        return settingsStore.get(SettingsStore.Keys.SESSION_KEY);
+        return StringUtil.exists(finalSessionKey());
     }
 
     private ConnectionState finalConnectionState() {
@@ -951,22 +876,6 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     private <T> T __finalObject(T object) {
         assertHoldsLock(this);
         return object;
-    }
-
-    public void onSignalReceived(Observer<Message> observer) {
-        signalReceivedObservableHelper.addObserver(observer);
-    }
-
-    public void onSignalsConnectionChanged() {
-
-    }
-
-    public void onSignalsDisconnected() {
-
-    }
-
-    public void onSignalsPresenceChanged() {
-
     }
 
     public SettingsStore getSettingsStore() {
@@ -1051,7 +960,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
 
     }
 
-    public UserAgent getFinalUserAgent() {
+    public UserAgent finalUserAgent() {
         accessUserAgent();
 
         return userAgent;
