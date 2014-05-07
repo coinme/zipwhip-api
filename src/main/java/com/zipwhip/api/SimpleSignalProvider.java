@@ -22,7 +22,6 @@ import com.zipwhip.lifecycle.CascadingDestroyableBase;
 import com.zipwhip.lifecycle.DestroyableBase;
 import com.zipwhip.reliable.retry.ExponentialBackoffRetryStrategy;
 import com.zipwhip.reliable.retry.RetryStrategy;
-import com.zipwhip.signals2.message.Message;
 import com.zipwhip.signals2.presence.Presence;
 import com.zipwhip.signals2.presence.UserAgent;
 import com.zipwhip.timers.HashedWheelTimer;
@@ -42,9 +41,9 @@ import java.util.concurrent.TimeUnit;
  * @author Michael
  * @date 4/8/2014
  */
-public class SimpleZipwhipClient extends CascadingDestroyableBase {
+public class SimpleSignalProvider extends CascadingDestroyableBase {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleZipwhipClient.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleSignalProvider.class);
 
     private final ObservableHelper<ConnectionState> connectionChangedObservableHelper;
     private final ObservableHelper<DeliveredMessage> signalReceivedObservableHelper;
@@ -70,7 +69,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     private volatile MutableObservableFuture<Void> __unsafe_externalConnectFuture;
     private volatile ConnectionState __unsafe_connectionState = ConnectionState.DISCONNECTED;
 
-    public SimpleZipwhipClient() {
+    public SimpleSignalProvider() {
         connectionChangedObservableHelper = new ObservableHelper<ConnectionState>("ConnectionChangedEvent", eventExecutor);
         signalReceivedObservableHelper = new ObservableHelper<DeliveredMessage>("SignalReceivedEvent", eventExecutor);
         presenceChangedObservableHelper = new ObservableHelper<Event<Presence>>("PresenceChangedEvent", eventExecutor);
@@ -232,7 +231,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
         finalExternalConnectFuture.addObserver(new Observer<ObservableFuture<Void>>() {
             @Override
             public void notify(Object sender, ObservableFuture<Void> item) {
-                synchronized (SimpleZipwhipClient.this) {
+                synchronized (SimpleSignalProvider.this) {
                     clearExternalConnectFutureIf(item);
                 }
             }
@@ -327,7 +326,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
         run(new Runnable() {
             @Override
             public void run() {
-                synchronized (SimpleZipwhipClient.this) {
+                synchronized (SimpleSignalProvider.this) {
                     assertSameSignalProvider(signalProvider);
 
                     runnable.run();
@@ -388,7 +387,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
                     LOGGER.debug("Running " + this);
                 }
 
-                synchronized (SimpleZipwhipClient.this) {
+                synchronized (SimpleSignalProvider.this) {
                     final String finalSessionKey = finalSessionKey();
 
                     if (!StringUtil.equalsIgnoreCase(originalFinalSessionKey, finalSessionKey)) {
@@ -558,7 +557,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
             }
 
             // We are in our boss thread, now need to capture the lock
-            synchronized (SimpleZipwhipClient.this) {
+            synchronized (SimpleSignalProvider.this) {
                 assertConnectionState(ConnectionState.SUBSCRIBING);
 
                 if (innerSubscribeFuture.isFailed()) {
@@ -805,7 +804,7 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
         @Override
         public void notify(final Object sender, Void item) {
             // We are already in the boss thread.
-            synchronized (SimpleZipwhipClient.this) {
+            synchronized (SimpleSignalProvider.this) {
                 // No one is able to change the state except for us, we hold the golden lock.
                 final SignalProviderImpl finalSignalProvider = (SignalProviderImpl) finalSignalProvider();
                 final SignalConnection finalSignalConnection = finalSignalProvider == null ? null : finalSignalProvider.getSignalConnection();
