@@ -71,9 +71,9 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     private volatile ConnectionState __unsafe_connectionState = ConnectionState.DISCONNECTED;
 
     public SimpleZipwhipClient() {
-        connectionChangedObservableHelper = new ObservableHelper<ConnectionState>("connectionChanged");
-        signalReceivedObservableHelper = new ObservableHelper<DeliveredMessage>("signalReceived");
-        presenceChangedObservableHelper = new ObservableHelper<Event<Presence>>("presenceChangedObservableHelper");
+        connectionChangedObservableHelper = new ObservableHelper<ConnectionState>("ConnectionChangedEvent", eventExecutor);
+        signalReceivedObservableHelper = new ObservableHelper<DeliveredMessage>("SignalReceivedEvent", eventExecutor);
+        presenceChangedObservableHelper = new ObservableHelper<Event<Presence>>("PresenceChangedEvent", eventExecutor);
     }
 
     private synchronized void init() {
