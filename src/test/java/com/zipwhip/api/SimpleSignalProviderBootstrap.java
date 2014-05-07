@@ -21,7 +21,7 @@ public class SimpleSignalProviderBootstrap {
 
     public static void main(String[] args) throws Exception {
         SimpleSignalProvider client = new SimpleSignalProvider();
-        String sessionKey = "a18eb775-9bf8-4166-8187-0f5dfc526d67:375";
+        String sessionKey = "Your sessionKey here";
 
         // The default SettingsStore is the MemorySettingsStore. But that would lose your clientId if you restarted
         // the app. My recommendation is to use either a PreferencesSettingsStore, or roll your own for a MySql database.
