@@ -222,6 +222,7 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
 
                                         if (item.isSuccess()) {
                                             LOGGER.debug("Successfully reconnected!");
+                                            setRetryCount(0);
                                         } else {
                                             LOGGER.error("Couldn't reconnect: " + item.getCause());
                                             reconnect();
@@ -416,6 +417,7 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
                         }
 
                         reconnect();
+
                     } else {
                         if (LOGGER.isDebugEnabled()) {
                             LOGGER.debug("The connectFuture was not null. We are already trying to connect, so this disconnect will be ignored (first connect is not retried)");
@@ -444,10 +446,10 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
         long retryInSeconds = retryStrategy.getNextRetryInterval(finalRetryCount);
 
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(String.format("Scheduling reconnect in %s seconds at %s.", retryInSeconds, FutureDateUtil.inFuture(retryInSeconds, TimeUnit.SECONDS)));
+            LOGGER.debug(String.format("Scheduling reconnect in %s milliseconds at %s. (retryCount:%s)", retryInSeconds, FutureDateUtil.inFuture(retryInSeconds, TimeUnit.MILLISECONDS), finalRetryCount));
         }
 
-        timer.newTimeout(reconnectTimerTask, retryInSeconds, TimeUnit.SECONDS);
+        timer.newTimeout(reconnectTimerTask, retryInSeconds, TimeUnit.MILLISECONDS);
         setReconnectScheduled(true);
         setRetryCount(finalRetryCount + 1);
     }

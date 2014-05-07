@@ -575,6 +575,9 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
                         LOGGER.debug("The subscribe succeeded. " + innerSubscribeFuture.getResult());
                     }
 
+                    final String finalClientId = finalSetting(SettingsStore.Keys.CLIENT_ID);
+
+                    settingsStore.put(SettingsStore.Keys.LAST_SUBSCRIBED_CLIENT_ID, finalClientId);
                     setConnectionState(ConnectionState.SUBSCRIBED_AND_WORKING);
 
                     final MutableObservableFuture<Void> finalExternalConnectFuture = finalExternalConnectFuture();
@@ -766,6 +769,10 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
     }
 
     private void setConnectionState(ConnectionState state) {
+        setConnectionState(state, false);
+    }
+
+    private void setConnectionState(ConnectionState state, boolean privately) {
         final ConnectionState finalConnectionState = finalConnectionState();
 
         if (LOGGER.isDebugEnabled()) {
@@ -774,8 +781,10 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
 
         this.__unsafe_connectionState = state;
 
-        // This will fire while we have our lock. Maybe not the best choice...
-        connectionChangedObservableHelper.notifyObservers(this, state);
+        if (!privately) {
+            // This will fire while we have our lock. Maybe not the best choice...
+            connectionChangedObservableHelper.notifyObservers(this, state);
+        }
     }
 
     private void attachToSignalProvider(SignalProvider signalProvider) {
@@ -816,16 +825,32 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
                 final ConnectionState finalConnectionState = finalConnectionState();
 
                 if (finalConnectionState == ConnectionState.SUBSCRIBED_AND_WORKING) {
-                    setConnectionState(ConnectionState.INTERRUPTED_WAITING_TO_RETRY);
+                    if (!signalProvider.isConnected()) {
+                        setConnectionState(ConnectionState.INTERRUPTED_WAITING_TO_RETRY);
+                    } else {
+                        LOGGER.error("This scenario was not tested. Please contact msmyers@zipwhip.com and send your logs! (hopefully trace logs enabled)");
+                    }
 
                     // TODO: issue retry?
+                } else if (finalConnectionState == ConnectionState.INTERRUPTED_WAITING_TO_RETRY) {
+                    if (signalProvider.isConnected()) {
+                        // We are reconnected
+                        String finalLastSubscribedClientId = finalSetting(SettingsStore.Keys.LAST_SUBSCRIBED_CLIENT_ID);
+                        String finalClientId = finalSetting(SettingsStore.Keys.CLIENT_ID);
+
+                        if (StringUtil.equalsIgnoreCase(finalLastSubscribedClientId, finalClientId)) {
+                            // It is subscribed and working!
+                            setConnectionState(ConnectionState.SUBSCRIBED_AND_WORKING);
+                        } else {
+                            LOGGER.error("This scenario was not tested. Please contact msmyers@zipwhip.com and send your logs! (hopefully trace logs enabled)");
+                        }
+                    }
                 }
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Announcing ConnectionState to listeners: " + finalConnectionState());
-                }
-
-                connectionChangedObservableHelper.notifyObservers(SimpleZipwhipClient.this, finalConnectionState());
+//                if (LOGGER.isDebugEnabled()) {
+//                    LOGGER.debug("Announcing ConnectionState to listeners: " + finalConnectionState());
+//                }
+//                connectionChangedObservableHelper.notifyObservers(SimpleZipwhipClient.this, finalConnectionState());
             }
         }
     };
@@ -842,6 +867,13 @@ public class SimpleZipwhipClient extends CascadingDestroyableBase {
                         // We failed to bind... What. the. fuck.
                     } else {
                         // TODO: Handle bind failure???
+
+                        final String lastClientId = finalSetting(SettingsStore.Keys.CLIENT_ID);
+
+                        if (!StringUtil.equalsIgnoreCase(lastClientId, item.getClientId())) {
+                            // They are NOT the same. Clear it out!
+                            settingsStore.remove(SettingsStore.Keys.LAST_SUBSCRIBED_CLIENT_ID);
+                        }
 
                         settingsStore.put(SettingsStore.Keys.CLIENT_ID, item.getClientId());
                         settingsStore.put(SettingsStore.Keys.CLIENT_ID_TOKEN, item.getToken());
