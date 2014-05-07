@@ -732,7 +732,7 @@ public class SimpleSignalProvider extends CascadingDestroyableBase {
         // handle some sort of retry.
         // we're not connected..
         final int attemptCount = incrementAttemptCount();
-        final long nextRetryInterval = retryStrategy.getNextRetryInterval(attemptCount);
+        final long nextRetryInterval = retryStrategy.retryIntervalInSeconds(attemptCount);
 
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace(String.format("Next retry. (attemptCount:%s) (nextRetryInterval:%s)", attemptCount, nextRetryInterval));

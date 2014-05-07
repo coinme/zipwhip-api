@@ -443,13 +443,14 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
         // Casting to/from int/Integer/int. Oh well.
         final int finalRetryCount = finalObject(__unsafe_retryCount);
 
-        long retryInSeconds = retryStrategy.getNextRetryInterval(finalRetryCount);
+        long retryInSeconds = retryStrategy.retryIntervalInSeconds(finalRetryCount);
 
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(String.format("Scheduling reconnect in %s milliseconds at %s. (retryCount:%s)", retryInSeconds, FutureDateUtil.inFuture(retryInSeconds, TimeUnit.MILLISECONDS), finalRetryCount));
+            LOGGER.debug(String.format("Scheduling reconnect in %s seconds at %s. (retryCount:%s)", retryInSeconds, FutureDateUtil.inFuture(retryInSeconds, TimeUnit.SECONDS), finalRetryCount));
         }
 
-        timer.newTimeout(reconnectTimerTask, retryInSeconds, TimeUnit.MILLISECONDS);
+        timer.newTimeout(reconnectTimerTask, retryInSeconds, TimeUnit.SECONDS);
+
         setReconnectScheduled(true);
         setRetryCount(finalRetryCount + 1);
     }

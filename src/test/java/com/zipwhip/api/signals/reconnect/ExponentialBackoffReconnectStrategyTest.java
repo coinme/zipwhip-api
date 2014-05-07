@@ -33,7 +33,7 @@ public class ExponentialBackoffReconnectStrategyTest {
 
 		long backoff = -1;
 		for (int i = 1; i < 20; i++) {
-			long delay = retryStrategy.getNextRetryInterval(i);
+			long delay = retryStrategy.retryIntervalInSeconds(i);
 			assertTrue("On iteration " + i + " " + delay + " < " + backoff, delay >= backoff);
 			backoff = delay;
 		}
