@@ -173,13 +173,7 @@ public class SimpleSignalProvider extends CascadingDestroyableBase {
 
         // If they are already logged in. Kick them off.
         {
-            final ConnectionState finalConnectionState = finalConnectionState();
-
-            if (isLoggedIn()) {
-                throw new Exception("Already logged in. Logout first.");
-            } else if (finalConnectionState != ConnectionState.DISCONNECTED) {
-                throw new Exception("The current state is not disconnected. " + finalConnectionState);
-            }
+            assertConnectionState(ConnectionState.DISCONNECTED);
         }
 
         // Basic parameter checking.
@@ -238,6 +232,10 @@ public class SimpleSignalProvider extends CascadingDestroyableBase {
         });
 
         return finalExternalConnectFuture;
+    }
+
+    private boolean isConnected() {
+        return signalProvider != null && signalProvider.isConnected();
     }
 
     public synchronized ObservableFuture<String> ping() throws Exception {
