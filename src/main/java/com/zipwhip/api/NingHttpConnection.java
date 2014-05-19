@@ -40,7 +40,7 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
     private String sessionKey;
     private SignTool authenticator;
 
-    private AsyncHttpClient asyncHttpClient = null;
+    private static AsyncHttpClient asyncHttpClient = null;
     private Executor workerExecutor = null;
     private ProxyServer proxyServer = null;
 

@@ -34,7 +34,7 @@ public class NingSignalsSubscribeActor implements SignalsSubscribeActor {
 
     private static final AsyncHandler<Void> HANDLER = new NullAsyncCompletionHandler<Void>();
 
-    private AsyncHttpClient client;
+    private static AsyncHttpClient client;
     private String url = "http://network.zipwhip.com/signal/subscribe";
     private Executor executor = SimpleExecutor.getInstance();
     private Executor eventExecutor = SimpleExecutor.getInstance();
