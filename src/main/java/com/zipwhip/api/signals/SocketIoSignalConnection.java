@@ -142,7 +142,6 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
 
         @Override
         public ObservableFuture<Void> call() throws Exception {
-
             // This runs in the "this.executor" thread pool
 
             synchronized (SocketIoSignalConnection.this) {
@@ -180,14 +179,7 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
                 public void run() {
                     final SocketIO finalSocketIO = finalObject(__unsafe_socketIO);
 
-                    if (finalSocketIO == null) {
-                        LOGGER.error("SocketIO was null, not attempting to reconnect.");
-                        setReconnectScheduled(false);
-
-                        return;
-                    }
-
-                    if (finalSocketIO.isConnected()) {
+                    if (finalSocketIO != null && finalSocketIO.isConnected()) {
                         if (LOGGER.isDebugEnabled()) {
                             LOGGER.debug("Was already connected, not attempting to reconnect.");
                         }

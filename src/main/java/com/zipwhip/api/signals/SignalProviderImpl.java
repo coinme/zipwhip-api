@@ -318,7 +318,9 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                         if (item.isSuccess()) {
                             LOGGER.debug("Successfully reconnected!");
                         } else {
-                            LOGGER.error("Couldn't reconnect: " + item.getCause());
+                            LOGGER.error("Couldn't reconnect, scheduling another: " + item.getCause());
+
+                            signalConnection.reconnect();
                         }
                     }
                 });
