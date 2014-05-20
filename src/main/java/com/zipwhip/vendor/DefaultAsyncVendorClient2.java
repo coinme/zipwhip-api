@@ -7,6 +7,7 @@ import com.zipwhip.api.ApiConnection;
 import com.zipwhip.api.Connection;
 import com.zipwhip.api.dto.MessageToken;
 import com.zipwhip.api.request.QueryStringBuilder;
+import com.zipwhip.api.response.MessageSendResult;
 import com.zipwhip.concurrent.DefaultObservableFuture;
 import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.NestedObservableFuture;
@@ -29,12 +30,14 @@ import java.util.concurrent.Executor;
 public class DefaultAsyncVendorClient2 extends CascadingDestroyableBase implements AsyncVendorClient2 {
 
     private Connection connection;
-    private Gson gson = new GsonBuilder().create();
+    private Gson gson = new GsonBuilder()
+            .registerTypeAdapter(MessageSendResult.class, new MessageSendResultTypeAdapter())
+            .create();
     private Executor eventExecutor;
     private String vendorKey;
 
     @Override
-    public ObservableFuture<List<MessageToken>> send(String subscriberPhoneNumber, String friendPhoneNumber, String body, String advertisement) throws Exception {
+    public ObservableFuture<MessageSendResult> send(final String subscriberPhoneNumber, final String friendPhoneNumber, final String body, final String advertisement) throws Exception {
         Map<String, Object> params = new HashMap<String, Object>();
 
         // In a few weeks, change this to apiKey
@@ -47,22 +50,27 @@ public class DefaultAsyncVendorClient2 extends CascadingDestroyableBase implemen
             params.put("advertisement", advertisement);
         }
 
-        return executeAsync("message/send", params, new InputCallable<InputStream, List<MessageToken>>() {
+        return executeAsync("message/send", params, new InputCallable<InputStream, MessageSendResult>() {
             @Override
-            public List<MessageToken> call(InputStream input) throws Exception {
-                MessageToken[] array = gson.fromJson(StreamUtil.getString(input), MessageToken[].class);
+            public MessageSendResult call(InputStream input) throws Exception {
+                MessageSendResult result = gson.fromJson(StreamUtil.getString(input), MessageSendResult.class);
 
-                if (array == null || array.length == 0) {
+                if (result == null) {
                     return null;
                 }
 
-                return Arrays.asList(array);
+                result.setSubscriberPhoneNumber(subscriberPhoneNumber);
+                result.setFriendPhoneNumber(friendPhoneNumber);
+                result.setBody(body);
+                result.setAdvertisement(advertisement);
+
+                return result;
             }
         });
     }
 
     private <T> ObservableFuture<T> executeAsync(String path, Map<String, Object> params, final InputCallable<InputStream, T> callable) throws Exception {
-        final ObservableFuture<InputStream> future = connection.send("get", path, params);
+        final ObservableFuture<InputStream> future = connection.send("GET", path, params);
         final MutableObservableFuture<T> result = new DefaultObservableFuture<T>(this, eventExecutor, "AsyncVendorClient2-events");
 
         future.addObserver(new Observer<ObservableFuture<InputStream>>() {
@@ -74,7 +82,11 @@ public class DefaultAsyncVendorClient2 extends CascadingDestroyableBase implemen
                 }
 
                 try {
-                    result.setSuccess(callable.call(item.getResult()));
+                    if (callable == null) {
+                        result.setSuccess(null);
+                    } else {
+                        result.setSuccess(callable.call(item.getResult()));
+                    }
                 } catch (Exception e) {
                     // If the future is cancelled or failed, it will throw an exception on getResult();
                     result.setFailure(e);

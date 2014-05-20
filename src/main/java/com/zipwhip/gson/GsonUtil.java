@@ -43,6 +43,16 @@ public class GsonUtil {
         return null;
     }
 
+    public static Long getLong(JsonElement element, String name) {
+        JsonObject object = getObject(element);
+
+        if (object == null) {
+            return null;
+        }
+
+        return getLong(object.get(name));
+    }
+
     public static String getString(JsonElement element) {
         if (isNull(element)) {
             return null;

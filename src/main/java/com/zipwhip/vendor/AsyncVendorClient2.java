@@ -1,6 +1,7 @@
 package com.zipwhip.vendor;
 
 import com.zipwhip.api.dto.MessageToken;
+import com.zipwhip.api.response.MessageSendResult;
 import com.zipwhip.concurrent.ObservableFuture;
 
 import java.util.List;
@@ -34,6 +35,6 @@ public interface AsyncVendorClient2 {
      * @return
      * @throws Exception
      */
-    ObservableFuture<List<MessageToken>> send(String subscriberPhoneNumber, String friendPhoneNumber, String body, String advertisement) throws Exception;
+    ObservableFuture<MessageSendResult> send(String subscriberPhoneNumber, String friendPhoneNumber, String body, String advertisement) throws Exception;
 
 }

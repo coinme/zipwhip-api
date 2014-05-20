@@ -61,7 +61,7 @@ public abstract class ApiConnectionFactory implements Factory<ApiConnection> {
             params.put("mobileNumber", username);
             params.put("password", password);
 
-            ObservableFuture<InputStream> future = connection.send("get", "user/login", params);
+            ObservableFuture<InputStream> future = connection.send("GET", "user/login", params);
 
             future.awaitUninterruptibly();
 
