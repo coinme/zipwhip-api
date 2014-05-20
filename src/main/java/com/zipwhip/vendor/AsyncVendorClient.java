@@ -12,7 +12,10 @@ import java.util.*;
  * You must be authenticated as a Vendor to use this API. It will reject your request if you are authenticated as a user.
  * <p/>
  * Provides administrator tools for a Vendor to connect to and communicate with Zipwhip.
+ * @deprecated These api calls were made for enterprise customers and require an enterprise API key. Landline enterprise
+ * customers cannot use these Apis, and thus it is being deprecated.
  */
+@Deprecated
 public interface AsyncVendorClient {
 
     /**

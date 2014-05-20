@@ -15,13 +15,13 @@ import java.util.Map;
  * Date: 8/29/11
  * Time: 1:54 PM
  */
-public class RequestBuilderTest {
+public class QueryStringBuilderTest {
 
-    RequestBuilder builder;
+    QueryStringBuilder builder;
 
     @Before
     public void setUp() throws Exception {
-        builder = new RequestBuilder();
+        builder = new QueryStringBuilder();
     }
 
     @Test
@@ -36,7 +36,7 @@ public class RequestBuilderTest {
 
         Assert.assertEquals("?3=4&1=2", query1);
 
-        builder = new RequestBuilder();
+        builder = new QueryStringBuilder();
         builder.param("3","4", false);
         builder.param("1","2", false);
         String query2 = builder.build();

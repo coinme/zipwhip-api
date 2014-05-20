@@ -2,7 +2,8 @@ package com.zipwhip.api;
 
 import com.ning.http.client.*;
 import com.ning.http.multipart.FilePart;
-import com.zipwhip.api.request.RequestBuilder;
+import com.sun.istack.internal.Nullable;
+import com.zipwhip.api.request.QueryStringBuilder;
 import com.zipwhip.concurrent.DefaultObservableFuture;
 import com.zipwhip.concurrent.MutableObservableFuture;
 import com.zipwhip.concurrent.ObservableFuture;
@@ -167,53 +168,30 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
         return isAuthenticated();
     }
 
-    /**
-     * @param method Each method has a name, example: user/get. See {@link ZipwhipNetworkSupport} for fields.
-     * @param params Map of query params to append to the method
-     * @return NetworkFuture<String>  where the String result is the raw serer response.
-     */
     @Override
-    public ObservableFuture<String> send(final String method, Map<String, Object> params) throws Exception {
-        return send(method, params, null);
+    public ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params) throws Exception {
+        return send(method, path, params, null);
     }
 
     /**
-     * @param method Each method has a name, example: user/get. See {@link ZipwhipNetworkSupport} for fields.
+     * @param path Each method has a name, example: user/get. See {@link ZipwhipNetworkSupport} for fields.
      * @param params Map of query params to append to the method
      * @param files  A list of Files to be added as parts for a multi part upload.
      * @return NetworkFuture<String>  where the String result is the raw serer response.
      */
     @Override
-    public ObservableFuture<String> send(String method, Map<String, Object> params, List<File> files) throws Exception {
-
-        final RequestBuilder rb = new RequestBuilder();
-
-        // convert the map into a key/value HTTP params string
-        rb.params(params);
-
-        final MutableObservableFuture<String> responseFuture = new DefaultObservableFuture<String>(this, workerExecutor);
+    public ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params, @Nullable List<File> files) throws Exception {
+        final MutableObservableFuture<InputStream> responseFuture = future();
+        final RequestBuilder builder = request(method);
 
         try {
-            com.ning.http.client.RequestBuilder builder = new com.ning.http.client.RequestBuilder();
+            String url = __unsafe_getUrl_fix_bug(CollectionUtil.exists(files));
 
-            /**
-             * The next 4 lines are needed because of a bug in Ning in NettyAsyncHttpProvider.java.
-             * Ning has not implemented multipart upload over SSH. If we are using HTTPS some files
-             * will result in a loop which can crash the JVM with an out of memory exception.
-             *
-             * https://issues.sonatype.org/browse/AHC-78
-             */
-            String toUseHost = host;
-
-            if (toUseHost.startsWith("https")) {
-                toUseHost = toUseHost.replaceFirst("https", "http");
-            }
-
-            builder.setUrl(UrlUtil.getSignedUrl(toUseHost, apiVersion, method, rb.build(), sessionKey, authenticator));
+            builder.setUrl(UrlUtil.getSignedUrl(url, apiVersion, path, new QueryStringBuilder(params).build(), sessionKey, authenticator));
 
             if (CollectionUtil.exists(files)) {
-
-                builder.setMethod("POST");
+                // Let the caller set the method instead of us setting it.
+//                builder.setMethod("POST");
 
                 for (File file : files) {
                     /**
@@ -222,77 +200,27 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
                      * is being uploaded. TinyUrlController needs to be fixed to get the file names
                      * from the fileMap as HostedContentController does.
                      */
-                    Part part = new FilePart("data", file, "multipart/form-data", null);
-                    builder.addBodyPart(part);
+                    builder.addBodyPart(new FilePart("data", file, "multipart/form-data", null));
                 }
             }
 
             final Request request = builder.build();
-            LOGGER.debug("==> Cloud Request: " + request.getUrl());
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("==> Cloud Request: " + request.getUrl());
+            }
+
             final AsyncHttpClient.BoundRequestBuilder requestBuilder = asyncHttpClient.prepareRequest(request);
-            if (proxyServer != null) {
-                requestBuilder.setProxyServer(proxyServer);
-            }
 
             requestBuilder.execute(new AsyncCompletionHandler<Object>() {
 
                 @Override
                 public Object onCompleted(Response response) throws Exception {
-
-                    try {
-                        // this will call the callbacks in the "workerExecutor" because of the constructor arg above.
-                        responseFuture.setSuccess(response.getResponseBody());
-                    } catch (IOException e) {
-                        responseFuture.setFailure(e);
-                    }
-
-                    return response;
-                }
-
-                @Override
-                public void onThrowable(Throwable t) {
-                    responseFuture.setFailure(t);
-                }
-
-            });
-
-        } catch (Exception e) {
-
-            LOGGER.error("Exception while hitting the web", e);
-
-            // this will call the callbacks in the "workerExecutor" because of the constructor arg above.
-            responseFuture.setFailure(e);
-            return responseFuture;
-        }
-
-        return responseFuture;
-    }
-
-    @Override
-    public ObservableFuture<InputStream> sendBinaryResponse(String method, Map<String, Object> params) throws Exception {
-
-        final RequestBuilder rb = new RequestBuilder();
-
-        // convert the map into a key/value HTTP params string
-        rb.params(params);
-
-        final MutableObservableFuture<InputStream> responseFuture = new DefaultObservableFuture<InputStream>(this, workerExecutor);
-
-        try {
-            final AsyncHttpClient.BoundRequestBuilder requestBuilder = asyncHttpClient.prepareGet(UrlUtil.getSignedUrl(host, apiVersion, method, rb.build(), sessionKey, authenticator));
-            if (proxyServer != null) {
-                requestBuilder.setProxyServer(proxyServer);
-            }
-            requestBuilder.execute(new AsyncCompletionHandler<Object>() {
-
-                @Override
-                public Object onCompleted(Response response) throws Exception {
-
-                    // TODO Remove this once zipwhip uses real HTTP codes
-                    if (response.getContentType() != null && response.getContentType().contains("json")) {
-                        responseFuture.setFailure(new Exception("404 - Resource not found"));
-                        return response;
-                    }
+                    // Michael 2014: Not sure why json is considered a failing contentType.
+//                    if (response.getContentType() != null && response.getContentType().contains("json")) {
+//                        responseFuture.setFailure(new Exception("404 - Resource not found"));
+//                        return response;
+//                    }
 
                     if (response.getStatusCode() >= 400) {
                         responseFuture.setFailure(new Exception(response.getStatusText()));
@@ -300,7 +228,7 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
                     }
 
                     try {
-                        // this will call the callbacks in the "workerExecutor" because of the constructor arg above.
+                        // This will call the callbacks in the "workerExecutor" because of the constructor arg above.
                         responseFuture.setSuccess(response.getResponseBodyAsStream());
                     } catch (IOException e) {
                         responseFuture.setFailure(e);
@@ -315,17 +243,51 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
                 }
 
             });
-
         } catch (Exception e) {
-
             LOGGER.error("Exception while hitting the web", e);
 
             // this will call the callbacks in the "workerExecutor" because of the constructor arg above.
             responseFuture.setFailure(e);
+
             return responseFuture;
         }
 
         return responseFuture;
+    }
+
+    private String __unsafe_getUrl_fix_bug(boolean hasFileContent) {
+        String toUseHost = host;
+
+        if (hasFileContent) {
+            /**
+             * This is needed because of a bug in Ning in NettyAsyncHttpProvider.java.
+             * Ning has not implemented multipart upload over SSH. If we are using HTTPS some files
+             * will result in a loop which can crash the JVM with an out of memory exception.
+             *
+             * https://issues.sonatype.org/browse/AHC-78
+             */
+            if (toUseHost.startsWith("https")) {
+                toUseHost = toUseHost.replaceFirst("https", "http");
+            }
+        }
+
+        return toUseHost;
+    }
+
+    private <T> MutableObservableFuture<T> future() {
+        return new DefaultObservableFuture<T>(this, workerExecutor);
+    }
+
+    private com.ning.http.client.RequestBuilder request(String method) {
+        com.ning.http.client.RequestBuilder builder = new com.ning.http.client.RequestBuilder();
+
+        if (proxyServer != null) {
+            builder.setProxyServer(proxyServer);
+        }
+
+        builder.setMethod(method);
+
+        return builder;
     }
 
     @Override

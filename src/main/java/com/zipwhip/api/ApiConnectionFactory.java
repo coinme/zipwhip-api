@@ -7,10 +7,12 @@ import com.zipwhip.api.response.StringServerResponse;
 import com.zipwhip.concurrent.ObservableFuture;
 import com.zipwhip.util.Factory;
 import com.zipwhip.util.SignTool;
+import com.zipwhip.util.StreamUtil;
 import com.zipwhip.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,7 +61,7 @@ public abstract class ApiConnectionFactory implements Factory<ApiConnection> {
             params.put("mobileNumber", username);
             params.put("password", password);
 
-            ObservableFuture<String> future = connection.send("user/login", params);
+            ObservableFuture<InputStream> future = connection.send("get", "user/login", params);
 
             future.awaitUninterruptibly();
 
@@ -67,7 +69,7 @@ public abstract class ApiConnectionFactory implements Factory<ApiConnection> {
                 throw new Exception("Cannot create connection, login rejected");
             }
 
-            ServerResponse serverResponse = responseParser.parse(future.getResult());
+            ServerResponse serverResponse = responseParser.parse(StreamUtil.getString(future.getResult()));
 
             if (!serverResponse.isSuccess()) {
                 throw new Exception("Error authenticating client");

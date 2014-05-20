@@ -19,9 +19,17 @@ import java.util.Map;
  * <p/>
  * Since this class is a builder it should be used once and thrown away.
  */
-public class RequestBuilder {
+public class QueryStringBuilder {
 
-    private StringBuilder sb = new StringBuilder("?");
+    private final StringBuilder sb = new StringBuilder("?");
+
+    public QueryStringBuilder() {
+
+    }
+
+    public QueryStringBuilder(Map<String, Object> params) {
+        this.params(params);
+    }
 
     /**
      * Add map of params to the list. If any of the param values are an instance of
@@ -34,7 +42,7 @@ public class RequestBuilder {
      * @param values A map of Objects to be converted into a URL query string.
      * @return The resulting query string.
      */
-    public RequestBuilder params(Map<String, Object> values) {
+    public QueryStringBuilder params(Map<String, Object> values) {
         return params(values, false);
     }
 
@@ -48,7 +56,7 @@ public class RequestBuilder {
      * @param encode If {@code true} then encode the params, otherwise don't.
      * @return The resulting query string.
      */
-    public RequestBuilder params(Map<String, Object> values, boolean encode) {
+    public QueryStringBuilder params(Map<String, Object> values, boolean encode) {
 
         if (values == null) {
             return this;
@@ -85,11 +93,11 @@ public class RequestBuilder {
      * @param value The param value.
      * @return The resulting query string.
      */
-    public RequestBuilder param(String key, String value) {
+    public QueryStringBuilder param(String key, String value) {
         return param(key, value, false);
     }
 
-    public RequestBuilder param(String key, String value, boolean encode) {
+    public QueryStringBuilder param(String key, String value, boolean encode) {
 
         if (StringUtil.isNullOrEmpty(key)) {
             return this;
@@ -131,7 +139,7 @@ public class RequestBuilder {
     }
 
     public static String getUrl(String url, Map<String, Object> params) {
-        RequestBuilder rb = new RequestBuilder();
+        QueryStringBuilder rb = new QueryStringBuilder();
 
         rb.params(params, true);
 
