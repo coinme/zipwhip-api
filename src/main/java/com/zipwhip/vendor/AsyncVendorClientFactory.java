@@ -9,6 +9,7 @@ import com.zipwhip.util.Factory;
 /**
  * This factory produces {@code AsyncVendorClient}s that are authenticated.
  */
+@Deprecated
 public class AsyncVendorClientFactory implements Factory<AsyncVendorClient> {
 
     private static final String API_VERSION = "/vendor/v1/";

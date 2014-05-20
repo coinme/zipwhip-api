@@ -16,6 +16,7 @@ import com.zipwhip.util.StringUtil;
 
 import java.util.*;
 
+@Deprecated
 public class DefaultAsyncVendorClient extends ZipwhipNetworkSupport implements AsyncVendorClient {
 
     /**
