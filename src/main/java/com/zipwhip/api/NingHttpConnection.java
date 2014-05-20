@@ -2,7 +2,6 @@ package com.zipwhip.api;
 
 import com.ning.http.client.*;
 import com.ning.http.multipart.FilePart;
-import com.sun.istack.internal.Nullable;
 import com.zipwhip.api.request.QueryStringBuilder;
 import com.zipwhip.concurrent.DefaultObservableFuture;
 import com.zipwhip.concurrent.MutableObservableFuture;
@@ -180,7 +179,7 @@ public class NingHttpConnection extends CascadingDestroyableBase implements ApiC
      * @return NetworkFuture<String>  where the String result is the raw serer response.
      */
     @Override
-    public ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params, @Nullable List<File> files) throws Exception {
+    public ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params, List<File> files) throws Exception {
         final MutableObservableFuture<InputStream> responseFuture = future();
         final RequestBuilder builder = request(method);
 
