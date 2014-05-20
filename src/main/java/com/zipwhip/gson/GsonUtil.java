@@ -73,7 +73,7 @@ public class GsonUtil {
         }
 
         if (element instanceof JsonObject) {
-            JsonObject object = (JsonObject)element;
+            JsonObject object = (JsonObject) element;
 
             String clazzName = GsonUtil.getString(object, "class");
 
@@ -154,5 +154,25 @@ public class GsonUtil {
         throw new JsonParseException("Not primitive?");
     }
 
+    public static JsonObject getObject(JsonElement json) {
+        if (json == null || json.isJsonNull()) {
+            return null;
+        } else if (!(json instanceof JsonObject)) {
+            return null;
+        }
 
+        return (JsonObject) json;
+    }
+
+    public static JsonObject getObject(JsonElement json, String name) {
+        JsonObject object = getObject(json);
+
+        return object.getAsJsonObject(name);
+    }
+
+    public static JsonArray getArray(JsonElement json, String name) {
+        JsonObject object = getObject(json);
+
+        return object.getAsJsonArray(name);
+    }
 }
