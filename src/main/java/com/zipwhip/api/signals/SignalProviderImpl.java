@@ -224,6 +224,14 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             return pingFuture;
         }
 
+        if (externalConnectFuture != null) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Connect in progress, not attempting ping.");
+            }
+
+            return new FakeObservableFuture<String>(this, null);
+        }
+
         final MutableObservableFuture<String> resultFuture = new DefaultObservableFuture<String>(this, executor);
 
         ObservableFuture<String> future = pingFuture = executeWithTimeout(
@@ -253,6 +261,13 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
                     boolean doReconnect = false;
                     if (!item.isSuccess()) {
+                        if (externalConnectFuture != null) {
+                            LOGGER.debug("Ping failed but connect in progress; not forcing reconnect.");
+
+                            resultFuture.setSuccess(item.getResult());
+                            return;
+                        }
+
                         LOGGER.error("Ping task failed! Attaching failure to future and reconnecting: " + item.getCause());
 
                         resultFuture.setFailure(item.getCause());
@@ -310,20 +325,9 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         signalConnection.disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
             @Override
             public void notify(Object sender, ObservableFuture<Void> item) {
-                LOGGER.debug("... now connecting.");
+                LOGGER.debug("... now scheduling reconnect.");
 
-                signalConnection.connect().addObserver(new Observer<ObservableFuture<Void>>() {
-                    @Override
-                    public void notify(Object sender, ObservableFuture<Void> item) {
-                        if (item.isSuccess()) {
-                            LOGGER.debug("Successfully reconnected!");
-                        } else {
-                            LOGGER.error("Couldn't reconnect, scheduling another: " + item.getCause());
-
-                            signalConnection.reconnect();
-                        }
-                    }
-                });
+                signalConnection.reconnect();
             }
         });
     }
