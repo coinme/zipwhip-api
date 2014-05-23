@@ -13,7 +13,6 @@ import com.zipwhip.lifecycle.CascadingDestroyableBase;
 import com.zipwhip.lifecycle.DestroyableBase;
 import com.zipwhip.util.CollectionUtil;
 import com.zipwhip.util.InputRunnable;
-import com.zipwhip.util.StreamUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -223,15 +222,15 @@ public abstract class ZipwhipNetworkSupport extends CascadingDestroyableBase {
 
         final MutableObservableFuture<T> result = new DefaultObservableFuture<T>(this, callbackExecutor);
 
-        final ObservableFuture<InputStream> responseFuture;
+        final ObservableFuture<String> responseFuture;
 
         if (CollectionUtil.exists(files)) {
-            responseFuture = getConnection().send("POST", method, params, files);
+            responseFuture = getConnection().send(method, params, files);
         } else {
-            responseFuture = getConnection().send("GET", method, params);
+            responseFuture = getConnection().send(method, params);
         }
 
-        responseFuture.addObserver(new Observer<ObservableFuture<InputStream>>() {
+        responseFuture.addObserver(new Observer<ObservableFuture<String>>() {
 
             /**
              * This code will execute in the "workerExecutor" of the connection.
@@ -241,7 +240,7 @@ public abstract class ZipwhipNetworkSupport extends CascadingDestroyableBase {
              * @param item Rich object representing the notification.
              */
             @Override
-            public void notify(Object sender, ObservableFuture<InputStream> item) {
+            public void notify(Object sender, ObservableFuture<String> item) {
 
                 // The network is done! let's check for our cake!
                 if (!item.isDone()) {
@@ -259,13 +258,7 @@ public abstract class ZipwhipNetworkSupport extends CascadingDestroyableBase {
                     return;
                 }
 
-                String responseString = null;
-
-                try {
-                    responseString = StreamUtil.getString(item.getResult());
-                } catch (IOException e) {
-                    result.setFailure(e);
-                }
+                String responseString = item.getResult();
 
                 ServerResponse serverResponse;
                 try {
@@ -310,7 +303,7 @@ public abstract class ZipwhipNetworkSupport extends CascadingDestroyableBase {
 
         final MutableObservableFuture<byte[]> result = new DefaultObservableFuture<byte[]>(this, callbackExecutor);
 
-        final ObservableFuture<InputStream> responseFuture = getConnection().send("GET", method, params);
+        final ObservableFuture<InputStream> responseFuture = getConnection().sendBinaryResponse(method, params);
 
         responseFuture.addObserver(new Observer<ObservableFuture<InputStream>>() {
 

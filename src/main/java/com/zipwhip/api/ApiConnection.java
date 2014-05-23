@@ -135,17 +135,27 @@ public interface ApiConnection extends Connection {
      */
     String getSessionKey();
 
+
     /**
      * Execute a call to the Zipwhip API ASYNCHRONOUSLY.
      *
-     * @param method The HTTP method to call (put/post/get/options/etc) [NOTE: The implementation of this connection might not be HTTP]
-     * @param path Each method has a name, example: user/get. See {@link ZipwhipNetworkSupport} for fields.
+     * @param method Each method has a name, example: user/get. See {@link ZipwhipNetworkSupport} for fields.
      * @param params Map of query params to append to the method
      * @param files  A list of files to be uploaded.
      * @return A ObservableFuture task which will return the response body as a String on completion.
      * @throws Exception is an error is encountered communicating with Zipwhip or parsing a response
      */
-    ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params, List<File> files) throws Exception;
+    ObservableFuture<String> send(String method, Map<String, Object> params, List<File> files) throws Exception;
+
+    /**
+     * Execute a call to the Zipwhip API ASYNCHRONOUSLY.
+     *
+     * @param method Each method has a name, example: user/get. See {@link ZipwhipNetworkSupport} for fields.
+     * @param params Map of query params to append to the method
+     * @return A ObservableFuture task which will return the response body as a String on completion.
+     * @throws Exception is an error is encountered communicating with Zipwhip or parsing a response
+     */
+    ObservableFuture<InputStream> sendBinaryResponse(String method, Map<String, Object> params) throws Exception;
 
 
 }
