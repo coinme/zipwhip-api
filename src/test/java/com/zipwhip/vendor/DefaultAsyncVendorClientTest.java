@@ -16,6 +16,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.util.*;
@@ -244,80 +245,80 @@ public class DefaultAsyncVendorClientTest {
     public class MockApiConnection extends DestroyableBase implements ApiConnection {
 
         @Override
-        public ObservableFuture<String> send(String method, Map<String, Object> params) throws Exception {
+        public ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params) throws Exception {
 
-            MutableObservableFuture<String> result = new DefaultObservableFuture<String>(this);
+            MutableObservableFuture<InputStream> result = new DefaultObservableFuture<InputStream>(this);
 
-            if (ZipwhipNetworkSupport.USER_ENROLL.equalsIgnoreCase(method)) {
-                result.setSuccess(ENROLLMENT_RESULT);
+            if (ZipwhipNetworkSupport.USER_ENROLL.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(ENROLLMENT_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.USER_DEACT.equalsIgnoreCase(method)) {
-                result.setSuccess(VOID_RESULT);
+            if (ZipwhipNetworkSupport.USER_DEACT.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(VOID_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.USER_EXISTS.equalsIgnoreCase(method)) {
-                result.setSuccess(BOOLEAN_TRUE_RESULT);
+            if (ZipwhipNetworkSupport.USER_EXISTS.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(BOOLEAN_TRUE_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CARBON_SUGGEST.equalsIgnoreCase(method)) {
-                result.setSuccess(VOID_RESULT);
+            if (ZipwhipNetworkSupport.CARBON_SUGGEST.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(VOID_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.MESSAGE_READ.equalsIgnoreCase(method)) {
-                result.setSuccess(VOID_RESULT);
+            if (ZipwhipNetworkSupport.MESSAGE_READ.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(VOID_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.MESSAGE_DELETE.equalsIgnoreCase(method)) {
-                result.setSuccess(VOID_RESULT);
+            if (ZipwhipNetworkSupport.MESSAGE_DELETE.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(VOID_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CONVERSATION_READ.equalsIgnoreCase(method)) {
-                result.setSuccess(VOID_RESULT);
+            if (ZipwhipNetworkSupport.CONVERSATION_READ.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(VOID_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CONVERSATION_DELETE.equalsIgnoreCase(method)) {
-                result.setSuccess(VOID_RESULT);
+            if (ZipwhipNetworkSupport.CONVERSATION_DELETE.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(VOID_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CONTACT_DELETE.equalsIgnoreCase(method)) {
-                result.setSuccess(VOID_RESULT);
+            if (ZipwhipNetworkSupport.CONTACT_DELETE.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(VOID_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CONTACT_LIST.equalsIgnoreCase(method)) {
-                result.setSuccess(CONTACT_LIST_RESULT);
+            if (ZipwhipNetworkSupport.CONTACT_LIST.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(CONTACT_LIST_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CONTACT_SAVE.equalsIgnoreCase(method)) {
-                result.setSuccess(CONTACT_SAVE_RESULT);
+            if (ZipwhipNetworkSupport.CONTACT_SAVE.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(CONTACT_SAVE_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CONVERSATION_LIST.equalsIgnoreCase(method)) {
-                result.setSuccess(CONVERSATION_LIST_RESULT);
+            if (ZipwhipNetworkSupport.CONVERSATION_LIST.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(CONVERSATION_LIST_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.USER_SAVE.equalsIgnoreCase(method)) {
-                result.setSuccess(USER_SAVE_RESULT);
+            if (ZipwhipNetworkSupport.USER_SAVE.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(USER_SAVE_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.MESSAGE_SEND.equalsIgnoreCase(method)) {
-                result.setSuccess(MESSAGE_SEND_RESULT);
+            if (ZipwhipNetworkSupport.MESSAGE_SEND.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(MESSAGE_SEND_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CARBON_ENABLED_VENDOR.equalsIgnoreCase(method)) {
-                result.setSuccess(BOOLEAN_TRUE_RESULT);
+            if (ZipwhipNetworkSupport.CARBON_ENABLED_VENDOR.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(BOOLEAN_TRUE_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CARBON_INSTALLED.equalsIgnoreCase(method)) {
-                result.setSuccess(BOOLEAN_TRUE_RESULT);
+            if (ZipwhipNetworkSupport.CARBON_INSTALLED.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(BOOLEAN_TRUE_RESULT.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.CONTACT_GET.equalsIgnoreCase(method)) {
-                result.setSuccess(CONTACT_GET_RESPONSE);
+            if (ZipwhipNetworkSupport.CONTACT_GET.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(CONTACT_GET_RESPONSE.getBytes()));
                 return result;
             }
-            if (ZipwhipNetworkSupport.MESSAGE_LIST.equalsIgnoreCase(method)) {
-                result.setSuccess(MESSAGE_LIST_RESULT);
+            if (ZipwhipNetworkSupport.MESSAGE_LIST.equalsIgnoreCase(path)) {
+                result.setSuccess(new ByteArrayInputStream(MESSAGE_LIST_RESULT.getBytes()));
                 return result;
             }
 
@@ -325,7 +326,7 @@ public class DefaultAsyncVendorClientTest {
         }
 
         @Override
-        public ObservableFuture<String> send(String method, Map<String, Object> params, List<File> files) throws Exception {
+        public ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params, List<File> files) throws Exception {
             return null;
         }
 
@@ -383,12 +384,6 @@ public class DefaultAsyncVendorClientTest {
         protected void onDestroy() {
 
         }
-
-        @Override
-        public ObservableFuture<InputStream> sendBinaryResponse(String method, Map<String, Object> params) throws Exception {
-            return null;
-        }
-
     }
 
 }

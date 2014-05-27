@@ -15,6 +15,7 @@ import com.zipwhip.util.UrlUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.util.List;
@@ -139,20 +140,20 @@ public class HttpConnection extends CascadingDestroyableBase implements ApiConne
     }
 
     @Override
-    public ObservableFuture<String> send(String method, Map<String, Object> params) {
+    public ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params) {
 
         QueryStringBuilder rb = new QueryStringBuilder();
 
         // convert the map into a key/value HTTP params string
         rb.params(params, true);
 
-        return send(method, rb.build());
+        return send(method, path, rb.build());
     }
 
-    private ObservableFuture<String> send(final String method, final String params) {
+    private ObservableFuture<InputStream> send(final String method, final String path, final String params) {
 
         // NOTE: if this is a SimpleExecutor (single threaded) then this will be a deadlock.
-        final MutableObservableFuture<String> future = new DefaultObservableFuture<String>(this, workerExecutor);
+        final MutableObservableFuture<InputStream> future = new DefaultObservableFuture<InputStream>(this, workerExecutor);
 
         bossExecutor.execute(new Runnable() {
             @Override
@@ -161,7 +162,7 @@ public class HttpConnection extends CascadingDestroyableBase implements ApiConne
                 String result;
 
                 try {
-                    result = DownloadURL.get(UrlUtil.getSignedUrl(host, apiVersion, method, params, sessionKey, authenticator));
+                    result = DownloadURL.get(UrlUtil.getSignedUrl(host, apiVersion, path, params, sessionKey, authenticator));
                 } catch (Exception e) {
 
                     LOGGER.error("problem with DownloadUrl", e);
@@ -172,7 +173,7 @@ public class HttpConnection extends CascadingDestroyableBase implements ApiConne
                 }
 
                 // NOTE: if this is a SimpleExecutor (single threaded) then this will be a deadlock. (workerExecutor)
-                future.setSuccess(result);
+                future.setSuccess(new ByteArrayInputStream(result.getBytes()));
             }
         });
 
@@ -180,12 +181,7 @@ public class HttpConnection extends CascadingDestroyableBase implements ApiConne
     }
 
     @Override
-    public ObservableFuture<String> send(String method, Map<String, Object> params, List<File> files) throws Exception {
-        throw new RuntimeException("Not implemented");
-    }
-
-    @Override
-    public ObservableFuture<InputStream> sendBinaryResponse(String method, Map<String, Object> params) throws Exception {
+    public ObservableFuture<InputStream> send(String method, String path, Map<String, Object> params, List<File> files) throws Exception {
         throw new RuntimeException("Not implemented");
     }
 

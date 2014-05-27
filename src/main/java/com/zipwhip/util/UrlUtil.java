@@ -58,8 +58,8 @@ public class UrlUtil {
      * @throws Exception If an error occurs creating or signing the URL.
      */
     public static String getSignedUrl(String host, String apiVersion, String method, String params, String sessionKey, SignTool authenticator) throws Exception {
-
         StringBuilder builder = new StringBuilder();
+
         builder.append(params);
 
         String connector = "&";
