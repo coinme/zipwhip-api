@@ -1,8 +1,14 @@
 package com.zipwhip.api.signals;
 
 import com.zipwhip.api.signals.dto.DeliveredMessage;
+import com.zipwhip.executors.CommonExecutorFactory;
+import com.zipwhip.executors.CommonExecutorTypes;
+import com.zipwhip.executors.SimpleCommonExecutorFactory;
 import com.zipwhip.important.ImportantTaskExecutor;
+import com.zipwhip.lifecycle.DestroyableBase;
 import com.zipwhip.util.Factory;
+
+import java.util.concurrent.ExecutorService;
 
 /**
  * Date: 9/25/13
@@ -17,10 +23,20 @@ public class SignalProviderFactory implements Factory<SignalProvider> {
     private Factory<BufferedOrderedQueue<DeliveredMessage>> bufferedOrderedQueueFactory;
     private Factory<SignalConnection> signalConnectionFactory;
     private SignalsSubscribeActor signalsSubscribeActor;
+    private CommonExecutorFactory eventExecutorFactory = SimpleCommonExecutorFactory.getInstance();
 
     @Override
     public SignalProvider create() throws Exception {
-        SignalProviderImpl signalProvider = new SignalProviderImpl();
+        final ExecutorService eventExecutor = eventExecutorFactory.create(CommonExecutorTypes.EVENTS, "Events");
+
+        SignalProviderImpl signalProvider = new SignalProviderImpl(eventExecutor);
+
+        signalProvider.link(new DestroyableBase() {
+            @Override
+            protected void onDestroy() {
+                eventExecutor.shutdown();
+            }
+        });
 
         signalProvider.setImportantTaskExecutor(importantTaskExecutor);
         signalProvider.setBufferedOrderedQueue(bufferedOrderedQueueFactory.create());
@@ -60,5 +76,13 @@ public class SignalProviderFactory implements Factory<SignalProvider> {
 
     public void setSignalsSubscribeActor(SignalsSubscribeActor signalsSubscribeActor) {
         this.signalsSubscribeActor = signalsSubscribeActor;
+    }
+
+    public CommonExecutorFactory getEventExecutorFactory() {
+        return eventExecutorFactory;
+    }
+
+    public void setEventExecutorFactory(CommonExecutorFactory eventExecutorFactory) {
+        this.eventExecutorFactory = eventExecutorFactory;
     }
 }

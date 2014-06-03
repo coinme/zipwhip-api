@@ -86,6 +86,8 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
     }
 
     public SignalProviderImpl(Executor eventExecutor) {
+        this.eventExecutor = eventExecutor;
+
         connectionChangedEvent = new ObservableHelper<Void>("ConnectionChangedEvent", eventExecutor);
         exceptionEvent = new ObservableHelper<Throwable>("ExceptionEvent", eventExecutor);
         subscribeEvent = new ObservableHelper<SubscribeResult>("SubscribeEvent", eventExecutor);
@@ -234,7 +236,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
         final MutableObservableFuture<String> resultFuture = new DefaultObservableFuture<String>(this, executor);
 
-        ObservableFuture<String> future = pingFuture = executeWithTimeout(
+        final ObservableFuture<String> future = pingFuture = executeWithTimeout(
                 new PingTask(signalConnection, resultFuture, pingCount),
                 FutureDateUtil.inFuture(pingTimeoutSeconds, TimeUnit.SECONDS));
 
@@ -319,7 +321,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         if (pingFuture != null) {
             LOGGER.debug("Cancelling existing pingFuture, as we're now reconnecting.");
 
-            clearPingFuture();
+            clearAndCancelPingFuture();
         }
 
         signalConnection.disconnect().addObserver(new Observer<ObservableFuture<Void>>() {
@@ -379,7 +381,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         if (pingFuture != null) {
             LOGGER.debug("Initiating bind, so cancelling any existing pings.");
 
-            clearPingFuture();
+            clearAndCancelPingFuture();
         }
 
         final BindRequest _bindRequest = new BindRequest(getUserAgent(), clientId, token);
@@ -418,7 +420,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
                                 LOGGER.debug("Clearing existing pingFuture.");
                             }
 
-                            clearPingFuture();
+                            clearAndCancelPingFuture();
                         }
 
                         return;
@@ -877,7 +879,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             if (pingFuture != null) {
                 LOGGER.debug("Cancelling existing pingFuture, as we're now connecting.");
 
-                clearPingFuture();
+                clearAndCancelPingFuture();
             }
 
             ObservableFuture<Void> connectFuture = signalConnection.connect();
@@ -985,7 +987,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
         });
     }
 
-    private void clearPingFuture() {
+    private void clearAndCancelPingFuture() {
         pingFuture.cancel();
         pingFuture = null;
     }
@@ -1298,7 +1300,7 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
             destination.setFailure(source.getCause());
             return true;
         } else if (!source.isDone()) {
-            return true;
+            throw new RuntimeException("The sourceFuture was not done! " + source);
         }
 
         return false;
