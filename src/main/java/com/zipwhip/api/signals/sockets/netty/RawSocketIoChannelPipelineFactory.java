@@ -31,7 +31,7 @@ public class RawSocketIoChannelPipelineFactory extends DestroyableBase implement
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RawSocketIoChannelPipelineFactory.class);
 
-    public static final int DEFAULT_FRAME_SIZE = 8192;
+    public static final int DEFAULT_FRAME_SIZE = 12288;
     public static final int DEFAULT_PING_INTERVAL_SECONDS = 300; // when to ping inactive seconds
     public static final int DEFAULT_PONG_TIMEOUT_SECONDS = 30; // when to disconnect if a ping was not ponged by this time
 
