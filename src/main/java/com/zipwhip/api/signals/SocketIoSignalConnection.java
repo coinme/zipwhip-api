@@ -72,6 +72,8 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
 
     @Override
     public synchronized ObservableFuture<Void> connect() {
+        LOGGER.debug("Entered connect() in SocketIoSignalConnection.");
+
         final ObservableFuture<Void> finalExternalConnectFuture = finalObject(__unsafe_externalConnectFuture);
 
         if (finalExternalConnectFuture != null) {
@@ -184,6 +186,7 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
                             LOGGER.debug("Was already connected, not attempting to reconnect.");
                         }
 
+                        setRetryCount(0);
                         setReconnectScheduled(false);
 
                         return;
@@ -389,7 +392,7 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
                 @Override
                 public void run() {
                     LOGGER.warn("onState: STATE_INTERRUPTED or STATE_INVALID. Scheduling reconnect for later.");
-                    // Warning: commented out because it created circular synchronization... i.e. deadlock.
+                    // Warning: commented out because it created a deadlock.
                     //            socketIO.disconnect();
                     //            socketIO = null;
 
@@ -422,7 +425,6 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
             });
         }
     };
-
 
     public synchronized void reconnect() {
         final boolean finalReconnectAlreadyScheduled = getFinalReconnectScheduled();
@@ -464,12 +466,16 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
     }
 
     @Override
-    public synchronized ObservableFuture<ObservableFuture<Object[]>> emit(final String event, final Object... objects) {
-        final SocketIO finalSocketIO = finalObject(__unsafe_socketIO);
+    public ObservableFuture<ObservableFuture<Object[]>> emit(final String event, final Object... objects) {
+        final SocketIO socketIO = __unsafe_socketIO;
+
+        if (socketIO == null) {
+            return new FakeFailingObservableFuture<ObservableFuture<Object[]>>(this, new Exception("Not connected!"));
+        }
 
         ObservableFuture<Object[]> ackFuture = importantTaskExecutor.enqueue(
                 executor,
-                new SendWithAckTask(finalSocketIO, event, objects, eventExecutor),
+                new SendWithAckTask(socketIO, event, objects, eventExecutor),
                 FutureDateUtil.in30Seconds());
 
         // the underlying library doesn't tell us when transmission is successful.
