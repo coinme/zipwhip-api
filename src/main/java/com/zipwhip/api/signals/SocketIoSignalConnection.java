@@ -81,6 +81,11 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
             return finalExternalConnectFuture;
         }
 
+        if (isConnected()) {
+            LOGGER.debug("Not attempting to connect; was already connected.");
+            return new FakeObservableFuture<Void>(this, null);
+        }
+
         final MutableObservableFuture<Void> finalConnectFuture = setConnectFuture(new DefaultObservableFuture<Void>(this, eventExecutor, "connectFuture"));
 
         final ObservableFuture<Void> result = __unsafe_externalConnectFuture = importantTaskExecutor.enqueue(executor, new ConnectTask(finalConnectFuture), FutureDateUtil.in30Seconds());
@@ -219,7 +224,7 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
                                             LOGGER.debug("Successfully reconnected!");
                                             setRetryCount(0);
                                         } else {
-                                            LOGGER.error("Couldn't reconnect: " + item.getCause());
+                                            LOGGER.error("Couldn't reconnect: " + item.getCause() + ", scheduling another.");
                                             reconnect();
                                         }
                                     }
@@ -283,12 +288,6 @@ public class SocketIoSignalConnection extends CascadingDestroyableBase implement
             performRunnable(new Runnable() {
                 @Override
                 public void run() {
-                    final MutableObservableFuture<Void> finalConnectFuture = finalConnectFuture();
-
-                    if (finalConnectFuture != null) {
-                        finalConnectFuture.setFailure(new Exception("Disconnected"));
-                    }
-
                     // If the "EventExecutor" is a SimpleExecutor, then this might cause a deadlock.
                     // The reason is that the observer might synchronize themselves and that would be a bad order
                     // of operations.

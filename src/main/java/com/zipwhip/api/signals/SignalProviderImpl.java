@@ -303,9 +303,11 @@ public class SignalProviderImpl extends CascadingDestroyableBase implements Sign
 
                         if (signalConnection.isConnected()) {
                             // the connection hasn't yet detected the disconnect
+                            LOGGER.debug("Ping failed, but we still think we're connected. Disconnecting then reconnecting.");
                             forceDisconnectAndReconnect();
                         } else {
-                            signalConnection.connect();
+                            LOGGER.debug("Due to ping failure, scheduling reconnect.");
+                            signalConnection.reconnect();
                         }
                     }
                 }
